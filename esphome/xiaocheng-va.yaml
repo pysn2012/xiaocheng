@@ -44,8 +44,6 @@ esphome:
   # 屏幕页面用的 C++ 辅助函数（draw_battery / draw_wrapped），
   # 文件放在主配置同目录（xiaocheng-va/display_helpers.h）
   includes:
-    - display_helpers.h
-  includes:
     - display_helpers.h   # 屏幕辅助绘制函数（电池角标/文本换行）
   on_boot:
     priority: 600
