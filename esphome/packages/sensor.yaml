@@ -3,7 +3,7 @@ button:
   # HA 里可点的"恢复出厂"按钮（重新配网用）
   - platform: factory_reset
     id: factory_reset_btn
-    name: "恢复出厂设置"
+    name: "Factory Reset"
 
 # 文本传感器（对话内容，voice-assistant 模块写入，屏幕读取）
 text_sensor:
@@ -13,16 +13,16 @@ text_sensor:
   - id: text_response
     platform: template
 
-  - platform: wifi_info
+  -     platform: wifi_info
     ip_address:
       id: wifi_ip
-      name: "IP地址"
+      name: "IP Address"
 
 sensor:
   # ---- 电池电压：GPIO10 采样，XL9535 P0.5 高电平使能（hardware.yaml），×2 = 电压 ----
   - platform: adc
     id: battery_voltage
-    name: "电池电压"
+    name: "Battery Voltage"
     pin: GPIO10
     attenuation: 12db
     update_interval: 10s
@@ -32,7 +32,7 @@ sensor:
   # ---- 电池电量（%）：按锂电池 3.3V~4.2V 线性换算，可按实测曲线修正 ----
   - platform: template
     id: battery_percent
-    name: "电池电量"
+    name: "Battery Percent"
     unit_of_measurement: "%"
     device_class: battery
     state_class: measurement
@@ -47,7 +47,7 @@ sensor:
   # ---- 光敏传感器：GPIO3（ADC1，原始值）----
   - platform: adc
     id: ambient_light_raw
-    name: "光照"
+    name: "Light Level"
     pin: GPIO3
     attenuation: 12db
     update_interval: 30s
@@ -55,11 +55,11 @@ sensor:
   # WiFi 信号
   - platform: wifi_signal
     id: wifi_rssi
-    name: "WiFi信号"
+    name: "WiFi RSSI"
     update_interval: 60s
 
   # 运行时间
   - platform: uptime
     id: device_uptime
-    name: "运行时间S"
+    name: "Uptime"
     update_interval: 60s

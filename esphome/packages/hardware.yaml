@@ -50,7 +50,7 @@ switch:
   # 音频电源（必须先于 audio_adc/dac 初始化，见文件头说明）
   - platform: gpio
     id: audio_power
-    name: "音频电源"
+    name: "Audio Power"
     pin:
       xl9535: xl9535_hub
       number: ${xl_pin_audio_pwr}
@@ -70,7 +70,7 @@ switch:
   # 功放（NS4152）使能
   - platform: gpio
     id: amp_enable
-    name: "功放"
+    name: "Amp Enable"
     pin:
       xl9535: xl9535_hub
       number: ${xl_pin_amp_en}
@@ -90,7 +90,7 @@ switch:
   # 状态 LED（若实测亮灭相反，给对应 pin 加 inverted: true）
   - platform: gpio
     id: led_green
-    name: "绿灯"
+    name: "LED Green"
     pin:
       xl9535: xl9535_hub
       number: ${xl_pin_led_green}
@@ -99,7 +99,7 @@ switch:
 
   - platform: gpio
     id: led_blue
-    name: "蓝灯"
+    name: "LED Blue"
     pin:
       xl9535: xl9535_hub
       number: ${xl_pin_led_blue}
@@ -196,7 +196,7 @@ light:
   # 屏幕背光
   - platform: monochromatic
     id: backlight
-    name: "屏幕背光"
+    name: "LCD Backlight"
     output: backlight_output
     restore_mode: ALWAYS_ON
     entity_category: config
@@ -204,7 +204,7 @@ light:
   # 10 颗 WS2812（esp-idf 框架下用 RMT 方案，不用 neopixelbus）
   - platform: esp32_rmt_led_strip
     id: ws2812
-    name: "氛围灯"
+    name: "Ambient Light"
     pin: GPIO42
     num_leds: 10
     rgb_order: GRB

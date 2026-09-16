@@ -7,7 +7,7 @@
 # ============================================================
 substitutions:
   name: xiaocheng-va
-  friendly_name: 小程语音助手
+  friendly_name: Xiaocheng VA
 
   # ---- 语音助手阶段 ID ----
   voice_assist_idle_phase_id: "1"          # 空闲
