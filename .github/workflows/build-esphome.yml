@@ -39,13 +39,13 @@ jobs:
           # 进入配置文件目录
           cd esphome
           # 编译固件，生成bin文件
-          esphome compile xiaocheng_va.yaml
+          esphome compile xiaocheng-va.yaml
 
       # 步骤5：动态查找编译产物
       - name: 动态查找 firmware.bin
         id: find_fw
         run: |
-          SEARCH_ROOT=".esphome/build"   # 与编译目录对应
+          SEARCH_ROOT="esphome/.esphome/build"   # 与编译目录对应
           OTA=$(find "$SEARCH_ROOT" -name "firmware.ota.bin" | head -n 1)
           FACTORY=$(find "$SEARCH_ROOT" -name "firmware.factory.bin" | head -n 1)
 
@@ -60,7 +60,7 @@ jobs:
           path: |
             ${{ steps.find_fw.outputs.OTA }}
             ${{ steps.find_fw.outputs.FACTORY }}
-            esphome/xiaocheng_va.yaml
+            esphome/xiaocheng-va.yaml
             esphome/packages/fonts.yaml
             esphome/packages/script.yaml
             esphome/packages/voice-assistant.yaml
