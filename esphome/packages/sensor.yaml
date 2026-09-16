@@ -1,0 +1,65 @@
+# 传感器：电池 / 光敏 / WiFi / 对话文本
+button:
+  # HA 里可点的"恢复出厂"按钮（重新配网用）
+  - platform: factory_reset
+    id: factory_reset_btn
+    name: "恢复出厂设置"
+
+# 文本传感器（对话内容，voice-assistant 模块写入，屏幕读取）
+text_sensor:
+  - id: text_request
+    platform: template
+
+  - id: text_response
+    platform: template
+
+  - platform: wifi_info
+    ip_address:
+      id: wifi_ip
+      name: "IP地址"
+
+sensor:
+  # ---- 电池电压：GPIO10 采样，XL9535 P0.5 高电平使能（hardware.yaml），×2 = 电压 ----
+  - platform: adc
+    id: battery_voltage
+    name: "电池电压"
+    pin: GPIO10
+    attenuation: 12db
+    update_interval: 10s
+    filters:
+      - multiply: 2.0
+
+  # ---- 电池电量（%）：按锂电池 3.3V~4.2V 线性换算，可按实测曲线修正 ----
+  - platform: template
+    id: battery_percent
+    name: "电池电量"
+    unit_of_measurement: "%"
+    device_class: battery
+    state_class: measurement
+    update_interval: 10s
+    lambda: |-
+      float v = id(battery_voltage).state;
+      if (isnan(v))
+        return {};
+      float pct = (v - 3.3f) / (4.2f - 3.3f) * 100.0f;
+      return (int) std::round(std::clamp(pct, 0.0f, 100.0f));
+
+  # ---- 光敏传感器：GPIO3（ADC1，原始值）----
+  - platform: adc
+    id: ambient_light_raw
+    name: "光照"
+    pin: GPIO3
+    attenuation: 12db
+    update_interval: 30s
+
+  # WiFi 信号
+  - platform: wifi_signal
+    id: wifi_rssi
+    name: "WiFi信号"
+    update_interval: 60s
+
+  # 运行时间
+  - platform: uptime
+    id: device_uptime
+    name: "运行时间S"
+    update_interval: 60s

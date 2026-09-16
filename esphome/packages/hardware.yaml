@@ -1,0 +1,311 @@
+# ============================================================
+# 硬件层：芯片/总线/屏幕/灯/键盘矩阵
+# 注意顺序：电源开关（XL9535）放在音频芯片之前声明，
+# 保证上电时先开 P1.4 音频电源 / P0.7 LDO，再初始化 ES7210/ES8311
+# 页面绘制辅助函数见 display_helpers.h（draw_battery / draw_wrapped）
+# ============================================================
+
+esp32:
+  variant: esp32s3
+  flash_size: 16MB
+  cpu_frequency: 240MHz
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+# I2C1：XL9535 / ES8311 / ES7210
+i2c:
+  - id: i2c_bus
+    scl: GPIO7
+    sda: GPIO12
+    scan: true
+
+# SPI：LCD ST7789（SCK=47, MOSI=45）
+spi:
+  - id: spi_bus
+    clk_pin: GPIO47
+    mosi_pin: GPIO45
+
+# I2S0：MCLK=15, BCLK=16, WS=17（DOUT=13→喇叭 / DIN=18←麦克风，在语音模块里）
+i2s_audio:
+  - id: i2s_bus
+    i2s_mclk_pin: GPIO15
+    i2s_bclk_pin: GPIO16
+    i2s_lrclk_pin: GPIO17
+
+# ---- XL9535 IO 扩展（0x20，16 路）----
+xl9535:
+  - id: xl9535_hub
+    address: 0x20
+
+# ---- 电源/LED 开关（XL9535 扩展引脚）----
+switch:
+  # 音频电源（必须先于 audio_adc/dac 初始化，见文件头说明）
+  - platform: gpio
+    id: audio_power
+    name: "音频电源"
+    pin:
+      xl9535: xl9535_hub
+      number: ${xl_pin_audio_pwr}
+      mode: { output: true }
+    restore_mode: ALWAYS_ON
+
+  # LDO 使能
+  - platform: gpio
+    id: ldo_enable
+    name: "LDO"
+    pin:
+      xl9535: xl9535_hub
+      number: ${xl_pin_ldo}
+      mode: { output: true }
+    restore_mode: ALWAYS_ON
+
+  # 功放（NS4152）使能
+  - platform: gpio
+    id: amp_enable
+    name: "功放"
+    pin:
+      xl9535: xl9535_hub
+      number: ${xl_pin_amp_en}
+      mode: { output: true }
+    restore_mode: RESTORE_DEFAULT_ON
+
+  # 电池 ADC 采样使能（高电平）
+  - platform: gpio
+    id: battery_adc_en
+    pin:
+      xl9535: xl9535_hub
+      number: ${xl_pin_adc_en}
+      mode: { output: true }
+    restore_mode: ALWAYS_ON
+    internal: true
+
+  # 状态 LED（若实测亮灭相反，给对应 pin 加 inverted: true）
+  - platform: gpio
+    id: led_green
+    name: "绿灯"
+    pin:
+      xl9535: xl9535_hub
+      number: ${xl_pin_led_green}
+      mode: { output: true }
+    restore_mode: ALWAYS_OFF
+
+  - platform: gpio
+    id: led_blue
+    name: "蓝灯"
+    pin:
+      xl9535: xl9535_hub
+      number: ${xl_pin_led_blue}
+      mode: { output: true }
+    restore_mode: ALWAYS_OFF
+
+  # ---- 键盘矩阵行（原生 GPIO，行输出；空闲拉高，扫描时拉低）----
+  - platform: gpio
+    id: key_row_a     # GPIO0：A / RIGHT / UP
+    pin: GPIO0
+    restore_mode: ALWAYS_ON
+    internal: true
+
+  - platform: gpio
+    id: key_row_b     # GPIO46：DOWN / B / LEFT
+    pin: GPIO46
+    restore_mode: ALWAYS_ON
+    internal: true
+
+# ---- 键盘矩阵列（XL9535 输入，按下=低电平）----
+binary_sensor:
+  - platform: gpio
+    id: bs_col0
+    pin:
+      xl9535: xl9535_hub
+      number: ${xl_pin_key_col0}
+      mode: INPUT
+    inverted: true
+    internal: true
+
+  - platform: gpio
+    id: bs_col4
+    pin:
+      xl9535: xl9535_hub
+      number: ${xl_pin_key_col4}
+      mode: INPUT
+    inverted: true
+    internal: true
+
+  - platform: gpio
+    id: bs_col6
+    pin:
+      xl9535: xl9535_hub
+      number: ${xl_pin_key_col6}
+      mode: INPUT
+    inverted: true
+    internal: true
+
+  # ---- 6 个功能键（由 script.yaml 的 key_scan 扫描发布状态）----
+  - platform: template
+    id: key_a
+    internal: true
+    on_press:
+      - light.turn_off: ws2812          # A 关灯
+
+  - platform: template
+    id: key_right
+    internal: true
+    on_press:
+      - script.execute: scene_white     # RIGHT 白光常亮
+
+  - platform: template
+    id: key_up
+    internal: true
+    on_press:
+      - script.execute: scene_rainbow   # UP 彩虹流动
+
+  - platform: template
+    id: key_down
+    internal: true
+    on_press:
+      - script.execute: scene_blue      # DOWN 蓝光
+
+  - platform: template
+    id: key_b
+    internal: true
+    on_press:
+      - script.execute: scene_strobe    # B 红色闪烁
+
+  - platform: template
+    id: key_left
+    internal: true
+    on_press:
+      - script.execute: scene_pulse     # LEFT 绿色呼吸
+
+# ---- 输出：屏幕背光 BL=GPIO14 ----
+output:
+  - platform: ledc
+    pin: GPIO14
+    id: backlight_output
+
+# ---- 灯 ----
+light:
+  # 屏幕背光
+  - platform: monochromatic
+    id: backlight
+    name: "屏幕背光"
+    output: backlight_output
+    restore_mode: ALWAYS_ON
+    entity_category: config
+
+  # 10 颗 WS2812（esp-idf 框架下用 RMT 方案，不用 neopixelbus）
+  - platform: esp32_rmt_led_strip
+    id: ws2812
+    name: "氛围灯"
+    pin: GPIO42
+    num_leds: 10
+    rgb_order: GRB
+    chipset: ws2812
+    restore_mode: ALWAYS_OFF
+    effects:
+      - addressable_rainbow:
+      - pulse:
+      - strobe:
+      - flicker:
+
+# ---- 音频编解码器（I2C 控制 + I2S 数据）----
+audio_adc:
+  - platform: es7210
+    id: es7210_adc
+    i2c_id: i2c_bus
+    address: 0x43          # 按小程实测（ADDR 跳线），非默认 0x40
+    bits_per_sample: 16bit
+    sample_rate: 16000
+
+audio_dac:
+  - platform: es8311
+    id: es8311_dac
+    i2c_id: i2c_bus
+    address: 0x18
+    bits_per_sample: 16bit
+    sample_rate: 48000
+
+# ---- 屏幕：mipi_spi 新 API（旧版是 st7789v 平台，不可混用）----
+display:
+  - platform: mipi_spi
+    id: lcd
+    model: ST7789V
+    cs_pin: GPIO21
+    dc_pin: GPIO48
+    reset_pin:
+      xl9535: xl9535_hub
+      number: ${xl_pin_lcd_rst}
+    dimensions:
+      width: 240
+      height: 320
+    rotation: 90°          # 2.0" 屏横屏 320x240；方向不对改 0°/180°/270°
+    invert_colors: true
+    update_interval: never
+    pages:
+      # 初始化中
+      - id: initializing_page
+        lambda: |-
+          it.fill(id(bg_color));
+          it.printf(160, 100, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER, "启动中...");
+          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+      # 无 WiFi
+      - id: no_wifi_page
+        lambda: |-
+          it.fill(id(bg_color));
+          it.printf(160, 100, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER, "未连接WiFi");
+          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+      # 无 Home Assistant
+      - id: no_ha_page
+        lambda: |-
+          it.fill(id(bg_color));
+          it.printf(160, 100, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER, "未连接HA");
+          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+      # 空闲：大时钟 + 待机
+      - id: idle_page
+        lambda: |-
+          it.fill(id(bg_color));
+          auto t = id(ha_time).now();
+          if (t.is_valid()) {
+            it.strftime(160, 50, id(font_time), id(text_color), esphome::display::TextAlign::TOP_CENTER, "%H:%M", t);
+          }
+          it.printf(160, 130, id(font_main), id(accent_color), esphome::display::TextAlign::TOP_CENTER, "待机中，说 Okay Nabu");
+          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+      # 聆听
+      - id: listening_page
+        lambda: |-
+          it.fill(id(bg_color));
+          it.printf(160, 100, id(font_main), id(accent_color), esphome::display::TextAlign::TOP_CENTER, "聆听中...");
+          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+      # 思考
+      - id: thinking_page
+        lambda: |-
+          it.fill(id(bg_color));
+          it.printf(160, 100, id(font_main), id(accent_color), esphome::display::TextAlign::TOP_CENTER, "思考中...");
+          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+      # 回复：上半问、下半答，自动换行
+      - id: replying_page
+        lambda: |-
+          it.fill(id(bg_color));
+          draw_wrapped(it, id(text_request), id(font_small), id(accent_color), 8, 290, 3, 18);
+          draw_wrapped(it, id(text_response), id(font_small), id(text_color), 70, 290, 6, 18);
+          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+      # 错误
+      - id: error_page
+        lambda: |-
+          it.fill(id(bg_color));
+          it.printf(160, 100, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER, "出错了");
+          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+      # 静音
+      - id: muted_page
+        lambda: |-
+          it.fill(id(bg_color));
+          it.printf(160, 100, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER, "已静音");
+          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));

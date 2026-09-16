@@ -1,0 +1,4 @@
+# 时间同步（Home Assistant）
+time:
+  - platform: homeassistant
+    id: ha_time

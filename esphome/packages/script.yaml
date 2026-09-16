@@ -1,0 +1,186 @@
+# 脚本 + 定时器：显示调度 / 键盘扫描 / 灯光场景 / 联网指示灯
+
+script:
+  # ============ 显示调度：根据 WiFi/HA/语音阶段 选页面 ============
+  - id: draw_display
+    then:
+      - if:
+          condition:
+            lambda: return !id(init_in_progress);
+          then:
+            - if:
+                condition:
+                  wifi.connected:
+                then:
+                  - if:
+                      condition:
+                        api.connected:
+                      then:
+                        - lambda: |-
+                            switch(id(voice_assistant_phase)) {
+                              case ${voice_assist_listening_phase_id}:
+                                id(lcd).show_page(listening_page);  id(lcd).update(); break;
+                              case ${voice_assist_thinking_phase_id}:
+                                id(lcd).show_page(thinking_page);   id(lcd).update(); break;
+                              case ${voice_assist_replying_phase_id}:
+                                id(lcd).show_page(replying_page);   id(lcd).update(); break;
+                              case ${voice_assist_error_phase_id}:
+                                id(lcd).show_page(error_page);      id(lcd).update(); break;
+                              case ${voice_assist_muted_phase_id}:
+                                id(lcd).show_page(muted_page);      id(lcd).update(); break;
+                              case ${voice_assist_not_ready_phase_id}:
+                                id(lcd).show_page(no_ha_page);      id(lcd).update(); break;
+                              default:
+                                id(lcd).show_page(idle_page);       id(lcd).update(); break;
+                            }
+                      else:
+                        - display.page.show: no_ha_page
+                        - component.update: lcd
+                else:
+                  - display.page.show: no_wifi_page
+                  - component.update: lcd
+          else:
+            - display.page.show: initializing_page
+            - component.update: lcd
+
+  # ============ 键盘扫描：2 行 x 3 列，逐行拉低读列 ============
+  - id: key_scan
+    mode: single
+    then:
+      - switch.turn_off: key_row_a            # GPIO0 拉低
+      - delay: 2ms
+      - lambda: |-
+          id(key_a).publish_state(id(bs_col0).state);
+          id(key_right).publish_state(id(bs_col4).state);
+          id(key_up).publish_state(id(bs_col6).state);
+      - switch.turn_on: key_row_a
+      - switch.turn_off: key_row_b            # GPIO46 拉低
+      - delay: 2ms
+      - lambda: |-
+          id(key_down).publish_state(id(bs_col0).state);
+          id(key_b).publish_state(id(bs_col4).state);
+          id(key_left).publish_state(id(bs_col6).state);
+      - switch.turn_on: key_row_b
+
+  # ============ WS2812 灯光场景（5 键对应 5 种）============
+  - id: scene_white
+    then:
+      - light.turn_on:
+          id: ws2812
+          brightness: 100%
+          red: 100%
+          green: 100%
+          blue: 100%
+          effect: "None"
+
+  - id: scene_rainbow
+    then:
+      - light.turn_on:
+          id: ws2812
+          brightness: 80%
+          effect: "Rainbow"
+
+  - id: scene_blue
+    then:
+      - light.turn_on:
+          id: ws2812
+          brightness: 80%
+          red: 0%
+          green: 0%
+          blue: 100%
+          effect: "None"
+
+  - id: scene_strobe
+    then:
+      - light.turn_on:
+          id: ws2812
+          brightness: 100%
+          red: 100%
+          green: 0%
+          blue: 0%
+          effect: "Strobe"
+
+  - id: scene_pulse
+    then:
+      - light.turn_on:
+          id: ws2812
+          brightness: 80%
+          red: 0%
+          green: 100%
+          blue: 0%
+          effect: "Pulse"
+
+  # ============ 唤醒词启停（设备端 mWW / HA 端流式）============
+  - id: start_wake_word
+    then:
+      - if:
+          condition:
+            and:
+              - not:
+                  - voice_assistant.is_running:
+              - lambda: return id(wake_word_engine_location).current_option() == "On device";
+          then:
+            - lambda: id(va).set_use_wake_word(false);
+            - micro_wake_word.start:
+      - if:
+          condition:
+            and:
+              - not:
+                  - voice_assistant.is_running:
+              - lambda: return id(wake_word_engine_location).current_option() == "In Home Assistant";
+          then:
+            - lambda: id(va).set_use_wake_word(true);
+            - voice_assistant.start_continuous:
+
+  - id: stop_wake_word
+    then:
+      - if:
+          condition:
+            lambda: return id(wake_word_engine_location).current_option() == "In Home Assistant";
+          then:
+            - lambda: id(va).set_use_wake_word(false);
+            - voice_assistant.stop:
+      - if:
+          condition:
+            lambda: return id(wake_word_engine_location).current_option() == "On device";
+          then:
+            - micro_wake_word.stop:
+
+  # 根据静音开关设置当前阶段
+  - id: set_idle_or_mute_phase
+    then:
+      - if:
+          condition:
+            switch.is_off: mute
+          then:
+            - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
+          else:
+            - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
+
+interval:
+  # 键盘扫描 50Hz
+  - interval: 20ms
+    then:
+      - script.execute: key_scan
+
+  # 联网指示灯：等联网=蓝灯闪；联网成功=蓝灯灭+绿灯常亮
+  - interval: 500ms
+    then:
+      - if:
+          condition:
+            wifi.connected:
+          then:
+            - switch.turn_off: led_blue
+            - switch.turn_on: led_green
+          else:
+            - switch.toggle: led_blue
+            - switch.turn_off: led_green
+
+  # 空闲页每 10s 重绘一次，刷新时钟和电池角标
+  - interval: 10s
+    then:
+      - if:
+          condition:
+            lambda: return id(voice_assistant_phase) == ${voice_assist_idle_phase_id};
+          then:
+            - script.execute: draw_display

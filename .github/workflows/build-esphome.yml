@@ -1,0 +1,70 @@
+# 工作流名称
+name: build esphome
+
+# 触发条件
+on:
+  workflow_dispatch:  # 手动触发（推荐）
+
+jobs:
+  compile-esphome:
+    runs-on: ubuntu-latest
+    steps:
+      # 步骤1：拉取仓库代码
+      - name: 拉取仓库代码
+        uses: actions/checkout@v6
+
+      # 步骤2：配置 Python 环境
+      - name: 配置 Python 环境
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      # 步骤3：安装 ESPHome
+      - name: 安装 ESPHome
+        run: |
+          python -m pip install --upgrade pip
+          pip install esphome==2026.8.2
+
+      # 关键步骤：动态生成 secrets.yaml
+      - name: Generate secrets.yaml
+        run: |
+          cat > esphome/secrets.yaml <<EOF
+          wifi_ssid: "${{ secrets.WIFI_SSID }}"
+          wifi_password: "${{ secrets.WIFI_PASSWORD }}"
+          EOF
+
+      # 步骤4：编译固件
+      - name: 编译固件
+        run: |
+          # 进入配置文件目录
+          cd esphome
+          # 编译固件，生成bin文件
+          esphome compile xiaocheng_va.yaml
+
+      # 步骤5：动态查找编译产物
+      - name: 动态查找 firmware.bin
+        id: find_fw
+        run: |
+          SEARCH_ROOT=".esphome/build"   # 与编译目录对应
+          OTA=$(find "$SEARCH_ROOT" -name "firmware.ota.bin" | head -n 1)
+          FACTORY=$(find "$SEARCH_ROOT" -name "firmware.factory.bin" | head -n 1)
+
+          echo "OTA=$OTA" >> $GITHUB_OUTPUT
+          echo "FACTORY=$FACTORY" >> $GITHUB_OUTPUT
+
+      # 步骤6：上传固件
+      - name: 上传固件到 Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: xiaocheng-esphome-${{ github.sha }}
+          path: |
+            ${{ steps.find_fw.outputs.OTA }}
+            ${{ steps.find_fw.outputs.FACTORY }}
+            esphome/xiaocheng_va.yaml
+            esphome/packages/fonts.yaml
+            esphome/packages/script.yaml
+            esphome/packages/voice-assistant.yaml
+            esphome/packages/hardware.yaml
+            esphome/packages/sensor.yaml
+            esphome/packages/time.yaml
+          retention-days: 30

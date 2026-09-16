@@ -1,0 +1,96 @@
+# ============================================================
+# 小程 ESP32S3 掌机 · ESPHome 语音助手
+# 硬件：ESP32-S3 N16R8 / XL9535 / ST7789 2.0" 320x240
+#       ES7210(ADC) + ES8311(DAC) + NS4152 / WS2812 x10 / 矩阵键盘 2x3
+# 模块化结构参考 pill_box，语音助手/显示参考 lc-szpi-esp32s3
+# 需要 secrets.yaml: wifi_ssid / wifi_password
+# ============================================================
+substitutions:
+  name: xiaocheng-va
+  friendly_name: 小程语音助手
+
+  # ---- 语音助手阶段 ID ----
+  voice_assist_idle_phase_id: "1"          # 空闲
+  voice_assist_listening_phase_id: "2"     # 聆听
+  voice_assist_thinking_phase_id: "3"      # 思考
+  voice_assist_replying_phase_id: "4"      # 回复
+  voice_assist_not_ready_phase_id: "10"    # 未连接 HA
+  voice_assist_error_phase_id: "11"        # 错误
+  voice_assist_muted_phase_id: "12"        # 静音
+
+  # ---- 显示颜色 ----
+  bg_color: "000000"
+  text_color: "FFFFFF"
+  accent_color: "00DDFF"
+
+  # ---- XL9535 引脚（按"线性编号 port*8+bit"换算成 ESPHome 编号）----
+  # ESPHome xl9535 编号规则：P0 组 = 0~7；P1 组 = 10~17（比线性编号大 2）
+  xl_pin_lcd_rst: "12"       # LCD_RST  线性 P10 = P1.2
+  xl_pin_amp_en: "3"         # 功放使能  P3   = P0.3
+  xl_pin_ldo: "7"            # LDO      P7   = P0.7
+  xl_pin_audio_pwr: "14"     # 音频电源  线性 P12 = P1.4
+  xl_pin_adc_en: "5"         # 电池采样使能（高电平）P0.5
+  xl_pin_led_green: "16"     # 绿色LED  线性 P14 = P1.6
+  xl_pin_led_blue: "17"      # 蓝色LED  线性 P15 = P1.7
+  xl_pin_key_col0: "0"       # 键盘列 1 = P0.0
+  xl_pin_key_col4: "4"       # 键盘列 2 = P0.4
+  xl_pin_key_col6: "6"       # 键盘列 3 = P0.6
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2025.12.0
+  name_add_mac_suffix: true
+  # 屏幕页面用的 C++ 辅助函数（draw_battery / draw_wrapped），
+  # 文件放在主配置同目录（xiaocheng-va/display_helpers.h）
+  includes:
+    - display_helpers.h
+  includes:
+    - display_helpers.h   # 屏幕辅助绘制函数（电池角标/文本换行）
+  on_boot:
+    priority: 600
+    then:
+      - script.execute: draw_display
+      - delay: 30s
+      - if:
+          condition:
+            lambda: return id(init_in_progress);
+          then:
+            - lambda: id(init_in_progress) = false;
+            - script.execute: draw_display
+
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+
+api:
+  on_client_connected:
+    - script.execute: draw_display
+  on_client_disconnected:
+    - script.execute: draw_display
+
+ota:
+  - platform: esphome
+    id: ota_esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none   # 语音设备必须关省电，否则 I2S 收音不稳
+  ap:
+    ssid: "xiaocheng-va-setup"
+    password: "12345678"
+  on_connect:
+    - delay: 5s
+    - script.execute: draw_display
+  on_disconnect:
+    - script.execute: draw_display
+
+captive_portal:
+
+packages:
+  hardware: !include packages/hardware.yaml
+  time: !include packages/time.yaml
+  fonts: !include packages/fonts.yaml
+  sensor: !include packages/sensor.yaml
+  script: !include packages/script.yaml
+  voice: !include packages/voice-assistant.yaml

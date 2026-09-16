@@ -1,0 +1,38 @@
+# 字体：Google Fonts 思源黑体 + 中文全集（glyphsets 方式，无需贴字符集）
+substitutions:
+  font_family: "Noto Sans SC"
+
+font:
+  # 大时钟
+  - file:
+      type: gfonts
+      family: ${font_family}
+      weight: 400
+    id: font_time
+    size: 48
+    glyphs: "0123456789:"
+    ignore_missing_glyphs: true
+
+  # 页面标题/状态
+  - file:
+      type: gfonts
+      family: ${font_family}
+      weight: 400
+    id: font_main
+    size: 24
+    glyphsets:
+      - GF_Chinese_Simplified
+    glyphs: "0123456789.%V:, "
+    ignore_missing_glyphs: true
+
+  # 正文（对话内容/电池角标）
+  - file:
+      type: gfonts
+      family: ${font_family}
+      weight: 400
+    id: font_small
+    size: 14
+    glyphsets:
+      - GF_Chinese_Simplified
+    glyphs: "0123456789.%V:, "
+    ignore_missing_glyphs: true
