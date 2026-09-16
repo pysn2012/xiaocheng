@@ -13,7 +13,7 @@ text_sensor:
   - id: text_response
     platform: template
 
-  -     platform: wifi_info
+  - platform: wifi_info
     ip_address:
       id: wifi_ip
       name: "IP Address"
