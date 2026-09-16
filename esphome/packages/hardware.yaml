@@ -119,7 +119,7 @@ switch:
     restore_mode: ALWAYS_ON
     internal: true
 
-# ---- 键盘矩阵列（XL9535 输入，按下=低电平）----
+# ---- 键盘矩阵列（XL9535 输入，按下=低电平；inverted 必须放在 pin 里）----
 binary_sensor:
   - platform: gpio
     id: bs_col0
@@ -127,7 +127,7 @@ binary_sensor:
       xl9535: xl9535_hub
       number: ${xl_pin_key_col0}
       mode: INPUT
-    inverted: true
+      inverted: true
     internal: true
 
   - platform: gpio
@@ -136,7 +136,7 @@ binary_sensor:
       xl9535: xl9535_hub
       number: ${xl_pin_key_col4}
       mode: INPUT
-    inverted: true
+      inverted: true
     internal: true
 
   - platform: gpio
@@ -145,7 +145,7 @@ binary_sensor:
       xl9535: xl9535_hub
       number: ${xl_pin_key_col6}
       mode: INPUT
-    inverted: true
+      inverted: true
     internal: true
 
   # ---- 6 个功能键（由 script.yaml 的 key_scan 扫描发布状态）----
