@@ -20,6 +20,15 @@ psram:
   mode: octal
   speed: 80MHz
 
+# 颜色对象（页面绘制用 id() 引用；hex 值来自主配置 substitutions）
+color:
+  - id: bg_color
+    hex: ${bg_color}
+  - id: text_color
+    hex: ${text_color}
+  - id: accent_color
+    hex: ${accent_color}
+
 # I2C1：XL9535 / ES8311 / ES7210
 i2c:
   - id: i2c_bus
