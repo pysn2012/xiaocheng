@@ -30,6 +30,8 @@ script:
                                 id(lcd).show_page(muted_page);      id(lcd).update(); break;
                               case ${voice_assist_not_ready_phase_id}:
                                 id(lcd).show_page(no_ha_page);      id(lcd).update(); break;
+                              case ${voice_assist_timer_finished_phase_id}:
+                                id(lcd).show_page(timer_finished_page); id(lcd).update(); break;
                               default:
                                 id(lcd).show_page(idle_page);       id(lcd).update(); break;
                             }

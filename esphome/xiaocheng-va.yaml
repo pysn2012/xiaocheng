@@ -17,6 +17,7 @@ substitutions:
   voice_assist_not_ready_phase_id: "10"    # 未连接 HA
   voice_assist_error_phase_id: "11"        # 错误
   voice_assist_muted_phase_id: "12"        # 静音
+  voice_assist_timer_finished_phase_id: "20" # 定时器结束
 
   # ---- 显示颜色 ----
   bg_color: "000000"

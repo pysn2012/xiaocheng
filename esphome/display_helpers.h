@@ -3,7 +3,7 @@
 
 // 屏幕右上角电池角标：电压 + 电量百分比
 static void draw_battery(esphome::display::Display &it,
-                         esphome::display::Font *font,
+                         esphome::font::Font *font,
                          esphome::Color color,
                          esphome::sensor::Sensor *voltage,
                          esphome::sensor::Sensor *percent) {
@@ -21,7 +21,7 @@ static void draw_battery(esphome::display::Display &it,
 // max_width: 每行最大像素宽；max_lines: 最多行数；line_height: 行高
 static void draw_wrapped(esphome::display::Display &it,
                          esphome::text_sensor::TextSensor *ts,
-                         esphome::display::Font *font,
+                         esphome::font::Font *font,
                          esphome::Color color,
                          int start_y, int max_width, int max_lines, int line_height) {
   std::string text = ts->state.c_str();

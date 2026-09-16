@@ -169,6 +169,13 @@ voice_assistant:
     - script.execute: stop_wake_word
     - lambda: id(voice_assistant_phase) = ${voice_assist_not_ready_phase_id};
     - script.execute: draw_display
+  # 设备端定时器结束：显示结束页 10 秒后回空闲
+  on_timer_finished:
+    - lambda: id(voice_assistant_phase) = ${voice_assist_timer_finished_phase_id};
+    - script.execute: draw_display
+    - delay: 10s
+    - script.execute: set_idle_or_mute_phase
+    - script.execute: draw_display
 
 # 软件静音开关
 switch:
