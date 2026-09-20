@@ -64,53 +64,43 @@ script:
           id(key_left).publish_state(id(bs_col6).state);
       - switch.turn_on: key_row_b
 
-  # ============ WS2812 灯光场景（5 键对应 5 种）============
-  - id: scene_white
+  # ============ WS2812 状态灯效（由语音助手阶段驱动）============
+  - id: va_light_off
+    then:
+      - light.turn_off: ws2812
+
+  # Listening：白色呼吸
+  - id: va_light_listening
     then:
       - light.turn_on:
           id: ws2812
-          brightness: 100%
+          brightness: 60%
           red: 100%
           green: 100%
           blue: 100%
-          effect: "None"
-
-  - id: scene_rainbow
-    then:
-      - light.turn_on:
-          id: ws2812
-          brightness: 80%
-          effect: "Rainbow"
-
-  - id: scene_blue
-    then:
-      - light.turn_on:
-          id: ws2812
-          brightness: 80%
-          red: 0%
-          green: 0%
-          blue: 100%
-          effect: "None"
-
-  - id: scene_strobe
-    then:
-      - light.turn_on:
-          id: ws2812
-          brightness: 100%
-          red: 100%
-          green: 0%
-          blue: 0%
-          effect: "Strobe"
-
-  - id: scene_pulse
-    then:
-      - light.turn_on:
-          id: ws2812
-          brightness: 80%
-          red: 0%
-          green: 100%
-          blue: 0%
           effect: "Pulse"
+
+  # Thinking：蓝色扫描
+  - id: va_light_thinking
+    then:
+      - light.turn_on:
+          id: ws2812
+          brightness: 60%
+          red: 0%
+          green: 0%
+          blue: 100%
+          effect: "Scan"
+
+  # Replying：随机闪烁（近似"语音律动"；播放时麦克风已关闭，拿不到实时音量）
+  - id: va_light_replying
+    then:
+      - light.turn_on:
+          id: ws2812
+          brightness: 80%
+          red: 100%
+          green: 60%
+          blue: 0%
+          effect: "Flicker"
 
   # ============ 唤醒词启停（设备端 mWW / HA 端流式）============
   - id: start_wake_word
@@ -148,9 +138,10 @@ script:
           then:
             - micro_wake_word.stop:
 
-  # 根据静音开关设置当前阶段
+  # 根据静音开关设置当前阶段（回到空闲时同步关灯）
   - id: set_idle_or_mute_phase
     then:
+      - light.turn_off: ws2812
       - if:
           condition:
             switch.is_off: mute

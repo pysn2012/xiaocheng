@@ -55,11 +55,12 @@ image:
     id: img_timer_finished
     type: RGB
 
-# I2C1：XL9535 / ES8311 / ES7210
+# I2C1：XL9535 / ES8311 / ES7210（400kHz：默认 50kHz 太慢，键盘轮询会超时告警）
 i2c:
   - id: i2c_bus
     scl: GPIO7
     sda: GPIO12
+    frequency: 400kHz
     scan: true
 
 # SPI：LCD ST7789（SCK=47, MOSI=45）
@@ -188,37 +189,43 @@ binary_sensor:
     id: key_a
     internal: true
     on_press:
-      - light.turn_off: ws2812          # A 关灯
+      - switch.toggle: mute             # A 静音切换
 
   - platform: template
     id: key_right
     internal: true
     on_press:
-      - script.execute: scene_white     # RIGHT 白光常亮
+      - light.toggle: backlight         # RIGHT 屏幕背光开关
 
   - platform: template
     id: key_up
     internal: true
     on_press:
-      - script.execute: scene_rainbow   # UP 彩虹流动
+      - media_player.volume_up:         # UP 音量 +
+          id: speaker_media_player
 
   - platform: template
     id: key_down
     internal: true
     on_press:
-      - script.execute: scene_blue      # DOWN 蓝光
+      - media_player.volume_down:       # DOWN 音量 -
+          id: speaker_media_player
 
   - platform: template
     id: key_b
     internal: true
     on_press:
-      - script.execute: scene_strobe    # B 红色闪烁
+      - light.turn_off: ws2812          # B 手动关灯（下次状态切换自动恢复）
 
   - platform: template
     id: key_left
     internal: true
     on_press:
-      - script.execute: scene_pulse     # LEFT 绿色呼吸
+      - if:                             # LEFT 取消当前对话
+          condition:
+            voice_assistant.is_running:
+          then:
+            - voice_assistant.stop:
 
 # ---- 输出：屏幕背光 BL=GPIO14 ----
 output:
@@ -247,9 +254,10 @@ light:
     restore_mode: ALWAYS_OFF
     effects:
       - addressable_rainbow:
+      - addressable_scan:
       - pulse:
-      - strobe:
       - flicker:
+      - strobe:
 
 # ---- 音频编解码器（I2C 控制 + I2S 数据）----
 audio_adc:
@@ -283,6 +291,7 @@ display:
       height: 320
     rotation: 90°          # 2.0" 屏横屏 320x240；方向不对改 0°/180°/270°
     invert_colors: true
+    data_rate: 40MHz       # 默认 10MHz 整屏重绘要 200ms+，会阻塞主循环；花屏就降回 20MHz
     update_interval: never
     pages:
       # 初始化中（黑底图）
@@ -317,14 +326,14 @@ display:
         lambda: |-
           it.image(160, 120, id(img_thinking), ImageAlign::CENTER);
           draw_battery(it, id(font_small), id(dark_text_color), id(battery_voltage), id(battery_percent));
-      # 回复：白底图 + 白色文本框，上问下答（深色文字）
+      # 回复：白底图 + 顶部问题框 / 底部回复框，中间图案不被遮挡
       - id: replying_page
         lambda: |-
           it.image(160, 120, id(img_replying), ImageAlign::CENTER);
-          it.filled_rectangle(10, 16, 300, 58, id(text_color));
-          draw_wrapped(it, id(text_request), id(font_small), id(dark_text_color), 18, 290, 3, 18);
-          it.filled_rectangle(10, 84, 300, 112, id(text_color));
-          draw_wrapped(it, id(text_response), id(font_small), id(dark_text_color), 86, 290, 6, 18);
+          it.filled_rectangle(10, 4, 300, 44, id(text_color));
+          draw_wrapped(it, id(text_request), id(font_small), id(dark_text_color), 6, 290, 2, 18);
+          it.filled_rectangle(10, 178, 300, 58, id(text_color));
+          draw_wrapped(it, id(text_response), id(font_small), id(dark_text_color), 180, 290, 3, 18);
           draw_battery(it, id(font_small), id(dark_text_color), id(battery_voltage), id(battery_percent));
       # 错误（黑底图）
       - id: error_page

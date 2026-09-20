@@ -36,7 +36,7 @@ speaker:
     sample_rate: 48000
     bits_per_sample: 16bit
     channel: mono
-    buffer_duration: 100ms
+    buffer_duration: 500ms   # 100ms 偏小，播放时可能欠载出杂音
 
 # 媒体播放器：播 TTS / 提示音
 media_player:
@@ -103,6 +103,7 @@ voice_assistant:
   volume_multiplier: 2.0
   on_listening:
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_phase_id};
+    - script.execute: va_light_listening
     - text_sensor.template.publish:
         id: text_request
         state: "..."
@@ -112,6 +113,7 @@ voice_assistant:
     - script.execute: draw_display
   on_stt_vad_end:
     - lambda: id(voice_assistant_phase) = ${voice_assist_thinking_phase_id};
+    - script.execute: va_light_thinking
     - script.execute: draw_display
   on_stt_end:
     - text_sensor.template.publish:
@@ -123,6 +125,7 @@ voice_assistant:
         id: text_response
         state: !lambda return x;
     - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
+    - script.execute: va_light_replying
     - script.execute: draw_display
   on_end:
     # 等播报开始，再等播报结束（I2S 空闲）后才恢复唤醒词
@@ -167,6 +170,7 @@ voice_assistant:
     - script.execute: draw_display
   on_client_disconnected:
     - script.execute: stop_wake_word
+    - script.execute: va_light_off
     - lambda: id(voice_assistant_phase) = ${voice_assist_not_ready_phase_id};
     - script.execute: draw_display
   # 设备端定时器结束：显示结束页 10 秒后回空闲
