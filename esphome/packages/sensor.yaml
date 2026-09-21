@@ -18,6 +18,12 @@ text_sensor:
       id: wifi_ip
       name: "IP Address"
 
+# API（Home Assistant）连接状态：给屏幕右上角 HA 图标用
+binary_sensor:
+  - platform: status
+    id: api_status
+    internal: true
+
 sensor:
   # ---- 电池电压：GPIO10 采样，XL9535 P0.5 高电平使能（hardware.yaml），×2 = 电压 ----
   - platform: adc

@@ -14,7 +14,8 @@ static void draw_battery(esphome::display::Display &it,
                          esphome::font::Font *font,
                          esphome::Color color,
                          esphome::sensor::Sensor *percent,
-                         esphome::sensor::Sensor *voltage) {
+                         esphome::sensor::Sensor *voltage,
+                         esphome::binary_sensor::BinarySensor *api_status) {
   float p = percent->state;
   if (isnan(p))
     return;
@@ -38,9 +39,8 @@ static void draw_battery(esphome::display::Display &it,
     x -= icon_w;
     it.printf(x, 0, font, color, esphome::display::TextAlign::TOP_LEFT, "%s", "\U000F05A9");
   }
-  // Home Assistant 图标（API 连接时显示）
-  if (esphome::api::global_api_connection != nullptr &&
-      esphome::api::global_api_connection->is_connected()) {
+  // Home Assistant 图标（API 连接时显示，状态来自 status binary_sensor）
+  if (api_status != nullptr && api_status->state) {
     x -= icon_w;
     it.printf(x, 0, font, color, esphome::display::TextAlign::TOP_LEFT, "%s", "\U000F07B0");
   }

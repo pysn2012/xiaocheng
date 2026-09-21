@@ -312,19 +312,19 @@ display:
       - id: initializing_page
         lambda: |-
           it.image(160, 120, id(img_loading), ImageAlign::CENTER);
-          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage));
+          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage), id(api_status));
       # 无 WiFi（文字页）
       - id: no_wifi_page
         lambda: |-
           it.fill(id(bg_color));
           it.printf(160, 100, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER, "未连接WiFi");
-          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage));
+          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage), id(api_status));
       # 无 Home Assistant（文字页）
       - id: no_ha_page
         lambda: |-
           it.fill(id(bg_color));
           it.printf(160, 100, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER, "未连接HA");
-          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage));
+          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage), id(api_status));
       # 空闲：日期星期 + 大时钟 + 时段问候语（无图片）
       - id: idle_page
         lambda: |-
@@ -355,17 +355,17 @@ display:
             it.printf(160, 170, id(font_main), id(accent_color), esphome::display::TextAlign::TOP_CENTER,
                       "%s，%s", prefix, GREET[id(greet_idx)]);
           }
-          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage));
+          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage), id(api_status));
       # 聆听（白底图）
       - id: listening_page
         lambda: |-
           it.image(160, 120, id(img_listening), ImageAlign::CENTER);
-          draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage));
+          draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage), id(api_status));
       # 思考（白底图）
       - id: thinking_page
         lambda: |-
           it.image(160, 120, id(img_thinking), ImageAlign::CENTER);
-          draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage));
+          draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage), id(api_status));
       # 回复：白底图 + 顶部问题框 / 底部回复框，中间图案不被遮挡（font 18，行高 22）
       - id: replying_page
         lambda: |-
@@ -374,20 +374,20 @@ display:
           draw_wrapped(it, id(text_request), id(font_small), id(dark_text_color), 6, 290, 2, 22);
           it.filled_rectangle(10, 168, 300, 68, id(text_color));
           draw_wrapped(it, id(text_response), id(font_small), id(dark_text_color), 170, 290, 3, 22);
-          draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage));
+          draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage), id(api_status));
       # 错误（黑底图）
       - id: error_page
         lambda: |-
           it.image(160, 120, id(img_error), ImageAlign::CENTER);
-          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage));
+          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage), id(api_status));
       # 定时器结束（白底图）
       - id: timer_finished_page
         lambda: |-
           it.image(160, 120, id(img_timer_finished), ImageAlign::CENTER);
-          draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage));
+          draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage), id(api_status));
       # 静音
       - id: muted_page
         lambda: |-
           it.fill(id(bg_color));
           it.printf(160, 100, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER, "已静音");
-          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage));
+          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage), id(api_status));
