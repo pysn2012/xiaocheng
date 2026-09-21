@@ -29,7 +29,7 @@ sensor:
     filters:
       - multiply: 2.0
 
-  # ---- 电池电量（%）：按锂电池 3.3V~4.2V 线性换算，可按实测曲线修正 ----
+  # ---- 电池电量（%）：线性换算 3.3V~4.15V（4.15V 视为充满，规避充电截止回落导致的 96% 观感）----
   - platform: template
     id: battery_percent
     name: "Battery Percent"
@@ -41,7 +41,7 @@ sensor:
       float v = id(battery_voltage).state;
       if (isnan(v))
         return {};
-      float pct = (v - 3.3f) / (4.2f - 3.3f) * 100.0f;
+      float pct = (v - 3.3f) / (4.15f - 3.3f) * 100.0f;
       return (int) std::round(std::clamp(pct, 0.0f, 100.0f));
 
   # ---- 光敏传感器：GPIO3（ADC1，原始值）----

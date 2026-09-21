@@ -12,6 +12,11 @@ globals:
     type: int
     restore_value: false
     initial_value: ${voice_assist_not_ready_phase_id}
+  # 空闲页问候语后缀索引（进入空闲时随机 0~6，重绘不换）
+  - id: greet_idx
+    type: int
+    restore_value: false
+    initial_value: "0"
 
 # 麦克风：ES7210 → DIN=GPIO18
 microphone:

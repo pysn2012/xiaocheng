@@ -185,21 +185,29 @@ binary_sensor:
     internal: true
 
   # ---- 6 个功能键（由 script.yaml 的 key_scan 扫描发布状态）----
+  # delayed_on 50ms 消抖：扫描周期 20ms，真实按键会连续多周期保持按下，
+  # 单次脏读（行线空闲时列状态不可靠）直接被滤掉，杜绝幽灵按键
   - platform: template
     id: key_a
     internal: true
+    filters:
+      - delayed_on: 50ms
     on_press:
       - switch.toggle: mute             # A 静音切换
 
   - platform: template
     id: key_right
     internal: true
+    filters:
+      - delayed_on: 50ms
     on_press:
       - light.toggle: backlight         # RIGHT 屏幕背光开关
 
   - platform: template
     id: key_up
     internal: true
+    filters:
+      - delayed_on: 50ms
     on_press:
       - media_player.volume_up:         # UP 音量 +
           id: speaker_media_player
@@ -207,6 +215,8 @@ binary_sensor:
   - platform: template
     id: key_down
     internal: true
+    filters:
+      - delayed_on: 50ms
     on_press:
       - media_player.volume_down:       # DOWN 音量 -
           id: speaker_media_player
@@ -214,12 +224,16 @@ binary_sensor:
   - platform: template
     id: key_b
     internal: true
+    filters:
+      - delayed_on: 50ms
     on_press:
       - light.turn_off: ws2812          # B 手动关灯（下次状态切换自动恢复）
 
   - platform: template
     id: key_left
     internal: true
+    filters:
+      - delayed_on: 50ms
     on_press:
       - if:                             # LEFT 取消当前对话
           condition:
@@ -298,56 +312,82 @@ display:
       - id: initializing_page
         lambda: |-
           it.image(160, 120, id(img_loading), ImageAlign::CENTER);
-          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage));
       # 无 WiFi（文字页）
       - id: no_wifi_page
         lambda: |-
           it.fill(id(bg_color));
           it.printf(160, 100, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER, "未连接WiFi");
-          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage));
       # 无 Home Assistant（文字页）
       - id: no_ha_page
         lambda: |-
           it.fill(id(bg_color));
           it.printf(160, 100, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER, "未连接HA");
-          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
-      # 空闲（黑底图）
+          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage));
+      # 空闲：日期星期 + 大时钟 + 时段问候语（无图片）
       - id: idle_page
         lambda: |-
-          it.image(160, 120, id(img_idle), ImageAlign::CENTER);
-          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+          it.fill(id(bg_color));
+          auto t = id(ha_time).now();
+          if (t.is_valid()) {
+            // 星期映射：ESPTime 约定 day_of_week 1=周日 ... 7=周六
+            // 若实测星期偏了一天，改下面的 -1 偏移即可
+            static const char *WD[] = {"日", "一", "二", "三", "四", "五", "六"};
+            static const char *GREET[] = {"今天也要加油鸭", "说 Okay Nabu 找我", "随时待命中",
+                                          "今天有什么安排", "想定个闹钟吗", "电量充足心情好", "我在小程里等你"};
+            int h = t.hour;
+            const char *prefix;
+            if (h >= 23 || h < 5)  prefix = "夜深了";
+            else if (h < 9)        prefix = "早上好";
+            else if (h < 11)       prefix = "上午好";
+            else if (h < 13)       prefix = "中午好";
+            else if (h < 18)       prefix = "下午好";
+            else                   prefix = "晚上好";
+            char datebuf[32];
+            t.strftime(datebuf, sizeof(datebuf), "%m月%d日");
+            int wd = t.day_of_week;
+            if (wd < 1) wd = 1;
+            if (wd > 7) wd = 7;
+            it.printf(160, 36, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER,
+                      "%s 星期%s", datebuf, WD[wd - 1]);
+            it.strftime(160, 76, id(font_time), id(text_color), esphome::display::TextAlign::TOP_CENTER, "%H:%M", t);
+            it.printf(160, 170, id(font_main), id(accent_color), esphome::display::TextAlign::TOP_CENTER,
+                      "%s，%s", prefix, GREET[id(greet_idx)]);
+          }
+          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage));
       # 聆听（白底图）
       - id: listening_page
         lambda: |-
           it.image(160, 120, id(img_listening), ImageAlign::CENTER);
-          draw_battery(it, id(font_small), id(dark_text_color), id(battery_voltage), id(battery_percent));
+          draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage));
       # 思考（白底图）
       - id: thinking_page
         lambda: |-
           it.image(160, 120, id(img_thinking), ImageAlign::CENTER);
-          draw_battery(it, id(font_small), id(dark_text_color), id(battery_voltage), id(battery_percent));
-      # 回复：白底图 + 顶部问题框 / 底部回复框，中间图案不被遮挡
+          draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage));
+      # 回复：白底图 + 顶部问题框 / 底部回复框，中间图案不被遮挡（font 18，行高 22）
       - id: replying_page
         lambda: |-
           it.image(160, 120, id(img_replying), ImageAlign::CENTER);
-          it.filled_rectangle(10, 4, 300, 44, id(text_color));
-          draw_wrapped(it, id(text_request), id(font_small), id(dark_text_color), 6, 290, 2, 18);
-          it.filled_rectangle(10, 178, 300, 58, id(text_color));
-          draw_wrapped(it, id(text_response), id(font_small), id(dark_text_color), 180, 290, 3, 18);
-          draw_battery(it, id(font_small), id(dark_text_color), id(battery_voltage), id(battery_percent));
+          it.filled_rectangle(10, 4, 300, 48, id(text_color));
+          draw_wrapped(it, id(text_request), id(font_small), id(dark_text_color), 6, 290, 2, 22);
+          it.filled_rectangle(10, 168, 300, 68, id(text_color));
+          draw_wrapped(it, id(text_response), id(font_small), id(dark_text_color), 170, 290, 3, 22);
+          draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage));
       # 错误（黑底图）
       - id: error_page
         lambda: |-
           it.image(160, 120, id(img_error), ImageAlign::CENTER);
-          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage));
       # 定时器结束（白底图）
       - id: timer_finished_page
         lambda: |-
           it.image(160, 120, id(img_timer_finished), ImageAlign::CENTER);
-          draw_battery(it, id(font_small), id(dark_text_color), id(battery_voltage), id(battery_percent));
+          draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage));
       # 静音
       - id: muted_page
         lambda: |-
           it.fill(id(bg_color));
           it.printf(160, 100, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER, "已静音");
-          draw_battery(it, id(font_small), id(text_color), id(battery_voltage), id(battery_percent));
+          draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage));

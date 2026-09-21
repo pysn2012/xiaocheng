@@ -1,4 +1,5 @@
-# 时间同步（Home Assistant）
+# 时间同步（Home Assistant）；强制时区，避免日志里出现过 UTC+0 时间差 8 小时的问题
 time:
   - platform: homeassistant
     id: ha_time
+    timezone: Asia/Shanghai

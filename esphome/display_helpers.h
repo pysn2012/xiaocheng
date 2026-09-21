@@ -1,19 +1,49 @@
 #pragma once
 #include "esphome.h"
 
-// 屏幕右上角电池角标：电压 + 电量百分比
+// 屏幕右上角状态图标：电量（10 级 + 充电中）/ WiFi / Home Assistant
+// Material Design Icons 编码点，从右往左：电池(常显) → WiFi → HA
+static const char *BATTERY_ICONS[10] = {
+    "\U000F007A", "\U000F007B", "\U000F007C", "\U000F007D", "\U000F007E",
+    "\U000F007F", "\U000F0080", "\U000F0081", "\U000F0082", "\U000F0079"};
+static const char *BATTERY_CHARGING_ICONS[10] = {
+    "\U000F089C", "\U000F0086", "\U000F0087", "\U000F0088", "\U000F089D",
+    "\U000F0089", "\U000F089E", "\U000F008A", "\U000F008B", "\U000F0085"};
+
 static void draw_battery(esphome::display::Display &it,
                          esphome::font::Font *font,
                          esphome::Color color,
-                         esphome::sensor::Sensor *voltage,
-                         esphome::sensor::Sensor *percent) {
-  float v = voltage->state;
+                         esphome::sensor::Sensor *percent,
+                         esphome::sensor::Sensor *voltage) {
   float p = percent->state;
-  if (isnan(v) || isnan(p))
+  if (isnan(p))
     return;
   int pct = (int) (p + 0.5f);
-  it.printf(it.get_width(), 0, font, color, esphome::display::TextAlign::TOP_RIGHT,
-            "%.1fV %d%%", v, pct);
+  if (pct < 1)
+    pct = 1;
+  if (pct > 100)
+    pct = 100;
+  // 充电判定（启发式）：电压 >= 4.2V 视为充电中（充电时电池电压会被拉高）
+  bool charging = !isnan(voltage->state) && voltage->state >= 4.2f;
+  const char *batt = (charging ? BATTERY_CHARGING_ICONS : BATTERY_ICONS)[(pct - 1) / 10];
+
+  const int icon_w = 20;  // 图标占位宽
+  int x = it.get_width();
+  // 电池图标（最右，常显）
+  x -= icon_w;
+  it.printf(x, 0, font, color, esphome::display::TextAlign::TOP_LEFT, "%s", batt);
+  // WiFi 图标（连接时显示）
+  if (esphome::wifi::global_wifi_component != nullptr &&
+      esphome::wifi::global_wifi_component->is_connected()) {
+    x -= icon_w;
+    it.printf(x, 0, font, color, esphome::display::TextAlign::TOP_LEFT, "%s", "\U000F05A9");
+  }
+  // Home Assistant 图标（API 连接时显示）
+  if (esphome::api::global_api_connection != nullptr &&
+      esphome::api::global_api_connection->is_connected()) {
+    x -= icon_w;
+    it.printf(x, 0, font, color, esphome::display::TextAlign::TOP_LEFT, "%s", "\U000F07B0");
+  }
 }
 
 // 文本自动换行（UTF-8 逐字符累积，超宽则换行）

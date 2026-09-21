@@ -24,15 +24,15 @@ substitutions:
   text_color: "FFFFFF"
   accent_color: "00DDFF"
 
-  # ---- XL9535 引脚（按"线性编号 port*8+bit"换算成 ESPHome 编号）----
-  # ESPHome xl9535 编号规则：P0 组 = 0~7；P1 组 = 10~17（比线性编号大 2）
-  xl_pin_lcd_rst: "12"       # LCD_RST  线性 P10 = P1.2
-  xl_pin_amp_en: "3"         # 功放使能  P3   = P0.3
-  xl_pin_ldo: "7"            # LDO      P7   = P0.7
-  xl_pin_audio_pwr: "14"     # 音频电源  线性 P12 = P1.4
+  # ---- XL9535 引脚----
+  # ESPHome xl9535 编号规则：P0 组 = 0~7；P1 组 = 10~17
+  xl_pin_lcd_rst: "12"       # LCD_RST  P1.2
+  xl_pin_amp_en: "3"         # 功放使能 P0.3
+  xl_pin_ldo: "7"            # LDO      P0.7
+  xl_pin_audio_pwr: "14"     # 音频电源 P1.4
   xl_pin_adc_en: "5"         # 电池采样使能（高电平）P0.5
-  xl_pin_led_green: "16"     # 绿色LED  线性 P14 = P1.6
-  xl_pin_led_blue: "17"      # 蓝色LED  线性 P15 = P1.7
+  xl_pin_led_green: "16"     # 绿色LED  P1.6
+  xl_pin_led_blue: "17"      # 蓝色LED  P1.7
   xl_pin_key_col0: "0"       # 键盘列 1 = P0.0
   xl_pin_key_col4: "4"       # 键盘列 2 = P0.4
   xl_pin_key_col6: "6"       # 键盘列 3 = P0.6

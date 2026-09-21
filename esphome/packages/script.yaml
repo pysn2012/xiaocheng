@@ -50,14 +50,14 @@ script:
     mode: single
     then:
       - switch.turn_off: key_row_a            # GPIO0 拉低
-      - delay: 2ms
+      - delay: 5ms
       - lambda: |-
           id(key_a).publish_state(id(bs_col0).state);
           id(key_right).publish_state(id(bs_col4).state);
           id(key_up).publish_state(id(bs_col6).state);
       - switch.turn_on: key_row_a
       - switch.turn_off: key_row_b            # GPIO46 拉低
-      - delay: 2ms
+      - delay: 5ms
       - lambda: |-
           id(key_down).publish_state(id(bs_col0).state);
           id(key_b).publish_state(id(bs_col4).state);
@@ -138,10 +138,12 @@ script:
           then:
             - micro_wake_word.stop:
 
-  # 根据静音开关设置当前阶段（回到空闲时同步关灯）
+  # 根据静音开关设置当前阶段（回空闲时关灯 + 随机选一句问候语）
   - id: set_idle_or_mute_phase
     then:
       - light.turn_off: ws2812
+      - lambda: |-
+          id(greet_idx) = rand() % 7;
       - if:
           condition:
             switch.is_off: mute
