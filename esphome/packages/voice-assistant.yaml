@@ -60,7 +60,7 @@ media_player:
     on_announcement:
       # 播放前显式关麦：彻底释放 ES7210/I2S 收音通路，
       # 播放期间独占总线（半双工），杜绝回环串进功放的电流声
-      - microphone.stop:
+      - microphone.stop_capture:
       # 播报时若麦克风在收音，先停唤醒词，避免回声自触发
       - if:
           condition:

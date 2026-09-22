@@ -37,26 +37,34 @@ color:
     hex: "000000"
 
 # 状态图片（casita/ 目录，320x240 全屏，路径相对主配置目录）
+# 新 API：image 是组件平台（旧写法 2027.1.0 起移除）
 image:
-  - file: casita/idle_320_240.png
+  - platform: file
+    file: casita/idle_320_240.png
     id: img_idle
     type: RGB
-  - file: casita/loading_320_240.png
+  - platform: file
+    file: casita/loading_320_240.png
     id: img_loading
     type: RGB
-  - file: casita/listening_320_240.png
+  - platform: file
+    file: casita/listening_320_240.png
     id: img_listening
     type: RGB
-  - file: casita/thinking_320_240.png
+  - platform: file
+    file: casita/thinking_320_240.png
     id: img_thinking
     type: RGB
-  - file: casita/replying_320_240.png
+  - platform: file
+    file: casita/replying_320_240.png
     id: img_replying
     type: RGB
-  - file: casita/error_320_240.png
+  - platform: file
+    file: casita/error_320_240.png
     id: img_error
     type: RGB
-  - file: casita/timer_finished_320_240.png
+  - platform: file
+    file: casita/timer_finished_320_240.png
     id: img_timer_finished
     type: RGB
 
@@ -269,7 +277,7 @@ light:
     name: "Ambient Light"
     pin: GPIO42
     num_leds: 10
-    rgb_order: GRB
+    channel_colors: GRB   # 新 API（旧 rgb_order 2027.3.0 起移除）
     chipset: ws2812
     restore_mode: ALWAYS_OFF
     effects:
