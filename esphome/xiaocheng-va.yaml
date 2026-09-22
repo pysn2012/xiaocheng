@@ -50,6 +50,11 @@ esphome:
     priority: 600
     then:
       - script.execute: draw_display
+      # 功放最后通电（对齐 xiaozhi 上电时序）：等音频电源/LDO/codec/I2S
+      # 全部稳定后再接通 NS4152，消除开机 pop 与底噪
+      # （amp_enable 在 hardware.yaml 中为 ALWAYS_OFF，全靠这里打开）
+      - delay: 1s
+      - switch.turn_on: amp_enable
       - delay: 30s
       - if:
           condition:

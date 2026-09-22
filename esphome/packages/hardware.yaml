@@ -5,6 +5,11 @@
 # 页面绘制辅助函数见 display_helpers.h（draw_battery / draw_wrapped）
 # ============================================================
 
+# 上电时序（对齐 xiaozhi-zyb xiaocheng-h1）：
+# 音频电源/LDO 由 restore_mode ALWAYS_ON 在硬件初始化阶段就接通（codec 初始化
+# 依赖它们）；功放 NS4152 为 ALWAYS_OFF，由主配置 xiaocheng-va.yaml 的
+# esphome.on_boot 延迟接通（等 codec/I2S 稳定后再上功放，消除开机 pop）。
+
 esp32:
   variant: esp32s3
   flash_size: 16MB
@@ -103,7 +108,8 @@ switch:
       mode: { output: true }
     restore_mode: ALWAYS_ON
 
-  # 功放（NS4152）使能
+  # 功放（NS4152）使能：上电不自动开，由 on_boot 延迟 1s 后再接通
+  # （对齐 xiaozhi 上电时序：等音频电源/codec 稳定后再上功放，消除开机 pop）
   - platform: gpio
     id: amp_enable
     name: "Amp Enable"
@@ -111,7 +117,7 @@ switch:
       xl9535: xl9535_hub
       number: ${xl_pin_amp_en}
       mode: { output: true }
-    restore_mode: RESTORE_DEFAULT_ON
+    restore_mode: ALWAYS_OFF
 
   # 电池 ADC 采样使能（高电平）
   - platform: gpio
@@ -288,7 +294,7 @@ audio_dac:
     i2c_id: i2c_bus
     address: 0x18
     bits_per_sample: 16bit
-    sample_rate: 48000
+    sample_rate: 24000    # 与 speaker 管线一致（xiaozhi 同为 24k 出）
 
 # ---- 屏幕：mipi_spi 新 API（旧版是 st7789v 平台，不可混用）----
 display:
