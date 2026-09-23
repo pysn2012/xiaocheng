@@ -1,7 +1,8 @@
-# 语音助手：ES7210 麦克风(16k) + ES8311 喇叭(24k) + microWakeWord
+# 语音助手：ES7210 麦克风(16k) + ES8311 喇叭(16k) + microWakeWord
 # 唤醒词: "Okay Nabu" → 唤醒后语音对话 / 语音控制 HA
-# 输出管线 24k：对齐 xiaozhi-zyb xiaocheng-h1（TTS 源本就是 24k，
-# 48k 重采样徒增总线时钟切换，是播放电流声来源之一）
+# 收发统一 16k：麦克风被 microWakeWord 锁死 16k，喇叭跟麦走，MCLK 全程
+# 4.096MHz 不换频，避免每次阶段切换时 codec 重新同步产生哒声。
+# 代价：HA TTS（24k）重采样到 16k，高频细节略降。
 
 globals:
   # 标记设备是否仍在初始化
@@ -40,7 +41,7 @@ speaker:
     i2s_dout_pin: GPIO13
     dac_type: external
     audio_dac: es8311_dac
-    sample_rate: 24000   # 48k→24k：TTS 源即 24k，免重采样、I2S 时钟更低更稳
+    sample_rate: 16000   # 统一 16k：与麦克风同频，阶段切换时 MCLK 不换频（消切换哒声）
     bits_per_sample: 16bit
     channel: mono
     buffer_duration: 500ms   # 100ms 偏小，播放时可能欠载出杂音
@@ -55,7 +56,7 @@ media_player:
     announcement_pipeline:
       speaker: box_speaker
       format: WAV
-      sample_rate: 24000
+      sample_rate: 16000
       num_channels: 1
     on_announcement:
       # 播放前显式关麦：彻底释放 ES7210/I2S 收音通路，

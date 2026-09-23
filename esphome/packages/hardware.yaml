@@ -302,7 +302,7 @@ audio_dac:
     i2c_id: i2c_bus
     address: 0x18
     bits_per_sample: 16bit
-    sample_rate: 24000    # 与 speaker 管线一致（xiaozhi 同为 24k 出）
+    sample_rate: 16000    # 与麦克风同频（MCLK 恒 4.096MHz，切换阶段不换频）
 
 # ---- 屏幕：mipi_spi 新 API（旧版是 st7789v 平台，不可混用）----
 display:
