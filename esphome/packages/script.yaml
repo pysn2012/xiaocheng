@@ -45,42 +45,33 @@ script:
             - display.page.show: initializing_page
             - component.update: lcd
 
-  # ============ 键盘扫描：2 行 x 3 列 ============
-  # 整轮扫描在**一个 lambda 内**跑完（拉低行 → 忙等 settle → 现场读 XL9535 输入
-  # 寄存器 → 拉高行 → 行间放电），全程不让出主循环。
-  # 为什么必须这样：之前用 script 动作 + delay，行线低电平会跨过 yield 点；主循环
-  # 被 mWW 推理/流式/显示负载卡住时（日志 "key_scan already running" 刷屏就是征兆），
-  # 列传感器会把"按下"状态持续发布超过 50ms，delayed_on 消抖也拦不住 → 幽灵按键（跳静音）。
-  # 列线按下=低电平（XL9535 输入弱上拉，松开为高），故 pressed = !digital_read(pin)。
+  # ============ 键盘扫描：2 行 x 3 列，差分法 ============
+  # 判键逻辑全部在 key_scan.h（xiaocheng::key_scan_row），对齐 mpup 的
+  # xiaocheng-esp32s3 matrix_key_input.cpp：
+  #   行拉低读一次 → 行拉高读一次 → low ^ high 才是闭合键。
+  # 为什么不能用"拉低行读到低就算按下"：本机列线悬空、无上下拉，松手时列电平
+  # 不确定，会被当成按下（乱跳）；而真实按键又受行线阻抗影响（没反应）。
+  # 整轮扫描在一个 lambda 内跑完，行线电平切换与 I2C 读取之间不 yield，
+  # 避免主循环被 mWW 推理/显示负载卡住时行线停在低电平过久（幽灵按键）。
   - id: key_scan
     mode: single
     then:
       - lambda: |-
-          auto col_down = [](uint8_t pin) { return !id(xl9535_hub).digital_read(pin); };
-          // delayMicroseconds ≤5ms 是纯忙等，不会 yield，保证行线低电平窗口原子
-
+          static bool rows_ready = false;
+          if (!rows_ready) {
+            xiaocheng::key_rows_init();   // 行线初始化成高阻输入（只做一次）
+            rows_ready = true;
+          }
           // 行 A（GPIO0）：A=P0.0 / RIGHT=P0.4 / UP=P0.6
-          id(key_row_a).turn_off();
-          delayMicroseconds(2000);
-          bool a_a = col_down(0);
-          bool a_right = col_down(4);
-          bool a_up = col_down(6);
-          id(key_row_a).turn_on();
-          id(key_a).publish_state(a_a);
-          id(key_right).publish_state(a_right);
-          id(key_up).publish_state(a_up);
-          delayMicroseconds(1500);  // 行间放电：等列线寄生电容复位（对齐 dcp KEY_DISCHARGE_MS）
-
+          const uint8_t a = xiaocheng::key_scan_row(id(xl9535_hub), xiaocheng::KEY_ROW_A);
+          id(key_a).publish_state((a & xiaocheng::KEY_COL_BIT0) != 0);
+          id(key_right).publish_state((a & xiaocheng::KEY_COL_BIT4) != 0);
+          id(key_up).publish_state((a & xiaocheng::KEY_COL_BIT6) != 0);
           // 行 B（GPIO46）：DOWN=P0.0 / B=P0.4 / LEFT=P0.6
-          id(key_row_b).turn_off();
-          delayMicroseconds(2000);
-          bool b_down = col_down(0);
-          bool b_b = col_down(4);
-          bool b_left = col_down(6);
-          id(key_row_b).turn_on();
-          id(key_down).publish_state(b_down);
-          id(key_b).publish_state(b_b);
-          id(key_left).publish_state(b_left);
+          const uint8_t b = xiaocheng::key_scan_row(id(xl9535_hub), xiaocheng::KEY_ROW_B);
+          id(key_down).publish_state((b & xiaocheng::KEY_COL_BIT0) != 0);
+          id(key_b).publish_state((b & xiaocheng::KEY_COL_BIT4) != 0);
+          id(key_left).publish_state((b & xiaocheng::KEY_COL_BIT6) != 0);
 
   # ============ WS2812 状态灯效（由语音助手阶段驱动）============
   - id: va_light_off

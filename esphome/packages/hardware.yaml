@@ -156,20 +156,13 @@ switch:
       mode: { output: true }
     restore_mode: ALWAYS_OFF
 
-  # ---- 键盘矩阵行（原生 GPIO，行输出；空闲拉高，扫描时拉低）----
-  - platform: gpio
-    id: key_row_a     # GPIO0：A / RIGHT / UP
-    pin: GPIO0
-    restore_mode: ALWAYS_ON
-    internal: true
+  # ---- 键盘矩阵行（GPIO0 / GPIO46）----
+  # 行线不再由 switch 常驻驱动：改由 key_scan.h 的差分扫描在扫描瞬间切成输出，
+  # 平时保持高阻输入。原因见 key_scan.h 头部（mpup 实测：列线悬空，必须差分判键）。
 
-  - platform: gpio
-    id: key_row_b     # GPIO46：DOWN / B / LEFT
-    pin: GPIO46
-    restore_mode: ALWAYS_ON
-    internal: true
-
-# ---- 键盘矩阵列（XL9535 输入，按下=低电平；inverted 必须放在 pin 里）----
+# ---- 键盘矩阵列（XL9535 输入 P0.0 / P0.4 / P0.6）----
+# 这三个传感器只为把列脚配置成输入（XL9535 上电默认即输入），状态本身不用；
+# 真正的判键在 script.yaml 的 key_scan → key_scan.h 差分扫描里完成。
 binary_sensor:
   - platform: gpio
     id: bs_col0
@@ -198,14 +191,15 @@ binary_sensor:
       inverted: true
     internal: true
 
-  # ---- 6 个功能键（由 script.yaml 的 key_scan 扫描发布状态）----
-  # delayed_on 50ms 消抖：扫描周期 20ms，真实按键会连续多周期保持按下，
-  # 单次脏读（行线空闲时列状态不可靠）直接被滤掉，杜绝幽灵按键
+  # ---- 6 个功能键（由 script.yaml 的 key_scan 差分扫描发布状态）----
+  # 消抖 30ms：扫描周期 20ms，30ms 窗口要求连续 2 个采样一致才认；
+  # 单次脏读直接滤掉，同时 60ms 以上的短按也能可靠触发（50ms 会漏掉快按）。
   - platform: template
     id: key_a
     internal: true
     filters:
-      - delayed_on: 50ms
+      - delayed_on: 30ms
+      - delayed_off: 30ms
     on_press:
       - switch.toggle: mute             # A 静音切换
 
@@ -213,7 +207,8 @@ binary_sensor:
     id: key_right
     internal: true
     filters:
-      - delayed_on: 50ms
+      - delayed_on: 30ms
+      - delayed_off: 30ms
     on_press:
       - light.toggle: backlight         # RIGHT 屏幕背光开关
 
@@ -221,7 +216,8 @@ binary_sensor:
     id: key_up
     internal: true
     filters:
-      - delayed_on: 50ms
+      - delayed_on: 30ms
+      - delayed_off: 30ms
     on_press:
       - media_player.volume_up:         # UP 音量 +
           id: speaker_media_player
@@ -230,7 +226,8 @@ binary_sensor:
     id: key_down
     internal: true
     filters:
-      - delayed_on: 50ms
+      - delayed_on: 30ms
+      - delayed_off: 30ms
     on_press:
       - media_player.volume_down:       # DOWN 音量 -
           id: speaker_media_player
@@ -239,7 +236,8 @@ binary_sensor:
     id: key_b
     internal: true
     filters:
-      - delayed_on: 50ms
+      - delayed_on: 30ms
+      - delayed_off: 30ms
     on_press:
       - light.turn_off: ws2812          # B 手动关灯（下次状态切换自动恢复）
 
@@ -247,7 +245,8 @@ binary_sensor:
     id: key_left
     internal: true
     filters:
-      - delayed_on: 50ms
+      - delayed_on: 30ms
+      - delayed_off: 30ms
     on_press:
       - if:                             # LEFT 取消当前对话
           condition:

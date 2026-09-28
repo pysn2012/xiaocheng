@@ -51,8 +51,16 @@ media_player:
   - platform: speaker
     name: None
     id: speaker_media_player
-    volume_min: 0.8     # 0.8~1.0：数字音量衰减会吃信噪比，衰减越小电流声越轻
-    volume_max: 1.0
+    # 音量范围 = ES8311 的 REG32 数字音量寄存器（线性 0..255）：
+    #   0.75 = 0xBF = 0dB（datasheet 的 0dB 点）    1.0 = 0xFF = +32dB
+    # 所以旧的 0.8~1.0 等于全程 +6.5dB~+32dB，信号和量化噪声一起被抬高几十 dB
+    # → "声音很大但明显噪声"。mpup（同一台掌机，声音正常）用 esp_codec_dev，
+    # 它的音量 100 就是 0dB，所以这里把上限压到 0.75 与 mpup 对齐。
+    #   0.50 → REG32 127 → -32dB      0.75 → REG32 191 → 0dB
+    volume_min: 0.5
+    volume_max: 0.75
+    volume_initial: 0.7       # → REG32 ≈172 → 约 -9.5dB
+    volume_increment: 0.02    # 音量键步进 ≈2.6dB（默认 0.05 太粗）
     announcement_pipeline:
       speaker: box_speaker
       format: WAV

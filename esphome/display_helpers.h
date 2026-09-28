@@ -1,6 +1,10 @@
 #pragma once
 #include "esphome.h"
 
+// 键盘矩阵差分扫描（xiaocheng::key_scan_row）。本文件是主配置 esphome.includes
+// 的入口，顺带把 key_scan.h 引进来，省得再往主配置里加一行。
+#include "key_scan.h"
+
 // 屏幕右上角状态图标：电量（10 级 + 充电中）/ WiFi / Home Assistant
 // Material Design Icons 编码点，从右往左：电池(常显) → WiFi → HA
 static const char *BATTERY_ICONS[10] = {
