@@ -44,8 +44,11 @@ esphome:
   name_add_mac_suffix: true
   # 屏幕页面用的 C++ 辅助函数（draw_battery / draw_wrapped），
   # 文件放在主配置同目录（xiaocheng-va/display_helpers.h）
+  # 注意：esphome.includes 是**逐个拷贝**到构建目录的（只拷这里列出的文件），
+  # 被包含的本地头文件必须也在这里列出，否则编译报 "xxx.h: No such file or directory"
   includes:
     - display_helpers.h   # 屏幕辅助绘制函数（电池角标/文本换行）
+    - key_scan.h          # 键盘矩阵差分扫描（xiaocheng::key_scan_row）
   on_boot:
     priority: 600
     then:

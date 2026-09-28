@@ -1,8 +1,8 @@
 #pragma once
 #include "esphome.h"
 
-// 键盘矩阵差分扫描（xiaocheng::key_scan_row）。本文件是主配置 esphome.includes
-// 的入口，顺带把 key_scan.h 引进来，省得再往主配置里加一行。
+// 键盘矩阵差分扫描（xiaocheng::key_scan_row）。esphome.includes 会把
+// key_scan.h 一起拷到构建目录，这里再引一次保证顺序（见主配置 includes 注释）。
 #include "key_scan.h"
 
 // 屏幕右上角状态图标：电量（10 级 + 充电中）/ WiFi / Home Assistant
