@@ -5,6 +5,13 @@
 // key_scan.h 一起拷到构建目录，这里再引一次保证顺序（见主配置 includes 注释）。
 #include "key_scan.h"
 
+// 空闲页问候语。条数的唯一出处就是这里：idle_page 取 GREETINGS[idx]，
+// LEFT/RIGHT 切换和回到空闲时的随机取词都用 GREETINGS_COUNT 取模。
+static const char *GREETINGS[] = {
+    "今天也要加油鸭", "说 Okay Nabu 找我", "随时待命中", "今天有什么安排",
+    "想定个闹钟吗", "电量充足心情好", "我在小程里等你"};
+static const int GREETINGS_COUNT = sizeof(GREETINGS) / sizeof(GREETINGS[0]);
+
 // 屏幕右上角状态图标：电量（10 级 + 充电中）/ WiFi / Home Assistant
 // Material Design Icons 编码点，从右往左：电池(常显) → WiFi → HA
 static const char *BATTERY_ICONS[10] = {
@@ -50,14 +57,25 @@ static void draw_battery(esphome::display::Display &it,
   }
 }
 
+// 描边文字框（2px 双线）：白底图上的对话文字用框圈出来。
+// 关键点：**只描边、不填底** —— 填底色会把背景图片挡掉（box-3 的写法就是
+// filled_rectangle + rectangle，这里去掉 filled 那一层）。
+static void draw_text_frame(esphome::display::Display &it,
+                            int x, int y, int w, int h,
+                            esphome::Color color) {
+  it.rectangle(x, y, w, h, color);
+  it.rectangle(x + 1, y + 1, w - 2, h - 2, color);
+}
+
 // 文本自动换行（UTF-8 逐字符累积，超宽则换行）
-// ts: 文本传感器；font/color: 字体颜色；start_y: 起始 y；
-// max_width: 每行最大像素宽；max_lines: 最多行数；line_height: 行高
+// ts: 文本传感器；font/color: 字体颜色；
+// start_x/start_y: 文本左上角；max_width: 每行最大像素宽；
+// max_lines: 最多行数；line_height: 行高
 static void draw_wrapped(esphome::display::Display &it,
                          esphome::text_sensor::TextSensor *ts,
                          esphome::font::Font *font,
                          esphome::Color color,
-                         int start_y, int max_width, int max_lines, int line_height) {
+                         int start_x, int start_y, int max_width, int max_lines, int line_height) {
   std::string text = ts->state.c_str();
   int y = start_y;
   std::string line;
@@ -69,9 +87,9 @@ static void draw_wrapped(esphome::display::Display &it,
       (c & 0xF0) == 0xE0 ? 3 : 4;
     std::string next = line + text.substr(i, len);
     int x1, y1, w, h;
-    it.get_text_bounds(0, y, next.c_str(), font, esphome::display::TextAlign::TOP_LEFT, &x1, &y1, &w, &h);
+    it.get_text_bounds(start_x, y, next.c_str(), font, esphome::display::TextAlign::TOP_LEFT, &x1, &y1, &w, &h);
     if (w > max_width) {
-      it.printf(0, y, font, color, "%s", line.c_str());
+      it.printf(start_x, y, font, color, "%s", line.c_str());
       y += line_height;
       line.clear();
     } else {
@@ -80,6 +98,6 @@ static void draw_wrapped(esphome::display::Display &it,
     }
   }
   if (!line.empty() && y < start_y + max_lines * line_height) {
-    it.printf(0, y, font, color, "%s", line.c_str());
+    it.printf(start_x, y, font, color, "%s", line.c_str());
   }
 }

@@ -15,11 +15,16 @@ globals:
     type: int
     restore_value: false
     initial_value: ${voice_assist_not_ready_phase_id}
-  # 空闲页问候语后缀索引（进入空闲时随机 0~6，重绘不换）
+  # 空闲页问候语索引（条数见 display_helpers.h 的 GREETINGS_COUNT）
   - id: greet_idx
     type: int
     restore_value: false
     initial_value: "0"
+  # 是否用 LEFT/RIGHT 手动挑过问候语：挑过就不再被随机取词覆盖（重启恢复随机）
+  - id: greet_manual
+    type: bool
+    restore_value: false
+    initial_value: "false"
 
 # 麦克风：ES7210 → DIN=GPIO18
 microphone:
@@ -121,6 +126,18 @@ voice_assistant:
   auto_gain: 31dBFS
   volume_multiplier: 2.0
   on_listening:
+    # 息屏（A 键关背光）状态下被唤醒 → 自动亮屏，并直接给满亮度
+    # （唤醒是"我要用它了"，亮到底比沿用上次调暗的值更合适）。
+    # 挂在 on_listening 而不是 on_wake_word_detected：设备端 mWW 和 HA 端唤醒词
+    # 两种模式都会走到这里；灯已经亮着就完全不动它（不重设亮度）。
+    - if:
+        condition:
+          light.is_off: backlight
+        then:
+          - light.turn_on:
+              id: backlight
+              brightness: 100%
+              transition_length: 200ms
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_phase_id};
     - script.execute: va_light_listening
     - text_sensor.template.publish:

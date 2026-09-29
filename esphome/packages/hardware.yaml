@@ -201,7 +201,9 @@ binary_sensor:
       - delayed_on: 30ms
       - delayed_off: 30ms
     on_press:
-      - switch.toggle: mute             # A 静音切换
+      - light.toggle:                   # A 息屏 / 亮屏（按一下灭、再按一下亮）
+          id: backlight
+          transition_length: 300ms
 
   - platform: template
     id: key_right
@@ -210,7 +212,7 @@ binary_sensor:
       - delayed_on: 30ms
       - delayed_off: 30ms
     on_press:
-      - light.toggle: backlight         # RIGHT 屏幕背光开关
+      - script.execute: greet_next      # RIGHT 下一句问候语
 
   - platform: template
     id: key_up
@@ -239,7 +241,7 @@ binary_sensor:
       - delayed_on: 30ms
       - delayed_off: 30ms
     on_press:
-      - light.turn_off: ws2812          # B 手动关灯（下次状态切换自动恢复）
+      - switch.toggle: mute             # B 静音切换
 
   - platform: template
     id: key_left
@@ -248,11 +250,7 @@ binary_sensor:
       - delayed_on: 30ms
       - delayed_off: 30ms
     on_press:
-      - if:                             # LEFT 取消当前对话
-          condition:
-            voice_assistant.is_running:
-          then:
-            - voice_assistant.stop:
+      - light.turn_off: ws2812          # LEFT 关 WS2812（下次状态切换自动恢复）
 
 # ---- 输出：屏幕背光 BL=GPIO14 ----
 output:
@@ -347,8 +345,6 @@ display:
             // 星期映射：ESPTime 约定 day_of_week 1=周日 ... 7=周六
             // 若实测星期偏了一天，改下面的 -1 偏移即可
             static const char *WD[] = {"日", "一", "二", "三", "四", "五", "六"};
-            static const char *GREET[] = {"今天也要加油鸭", "说 Okay Nabu 找我", "随时待命中",
-                                          "今天有什么安排", "想定个闹钟吗", "电量充足心情好", "我在小程里等你"};
             int h = t.hour;
             const char *prefix;
             if (h >= 23 || h < 5)  prefix = "夜深了";
@@ -365,8 +361,11 @@ display:
             it.printf(160, 36, id(font_main), id(text_color), esphome::display::TextAlign::TOP_CENTER,
                       "%s 星期%s", datebuf, WD[wd - 1]);
             it.strftime(160, 76, id(font_time), id(text_color), esphome::display::TextAlign::TOP_CENTER, "%H:%M", t);
+            // 问候语：LEFT/RIGHT 可切，越界兜底（数组在 display_helpers.h）
+            int gi = id(greet_idx);
+            if (gi < 0 || gi >= GREETINGS_COUNT) gi = 0;
             it.printf(160, 170, id(font_main), id(accent_color), esphome::display::TextAlign::TOP_CENTER,
-                      "%s，%s", prefix, GREET[id(greet_idx)]);
+                      "%s，%s", prefix, GREETINGS[gi]);
           }
           draw_battery(it, id(icon_font), id(text_color), id(battery_percent), id(battery_voltage), id(api_status));
       # 聆听（白底图）
@@ -379,14 +378,22 @@ display:
         lambda: |-
           it.image(160, 120, id(img_thinking), ImageAlign::CENTER);
           draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage), id(api_status));
-      # 回复：白底图 + 顶部问题框 / 底部回复框，中间图案不被遮挡（font 18，行高 22）
+      # 回复：白底图 + 顶部问题框 / 底部回复框（只描边不填底，图片不被遮住）
+      # 框位依据：replying 图的非白内容实测在 x[80,239] y[44,199]，
+      # 于是上框放进 y2..44、下框放进 y198..238 这两条空白带；
+      # 上框右边只到 254，把右上角 60px 让给电量/WiFi/HA 三个图标（各 20px）。
+      # 文字行高 20（font_small 18），上下各 2 行。
       - id: replying_page
         lambda: |-
           it.image(160, 120, id(img_replying), ImageAlign::CENTER);
-          it.filled_rectangle(10, 4, 300, 48, id(text_color));
-          draw_wrapped(it, id(text_request), id(font_small), id(dark_text_color), 6, 290, 2, 22);
-          it.filled_rectangle(10, 168, 300, 68, id(text_color));
-          draw_wrapped(it, id(text_response), id(font_small), id(dark_text_color), 170, 290, 3, 22);
+          if (!id(text_request).state.empty()) {
+            draw_text_frame(it, 10, 2, 244, 42, id(dark_text_color));
+            draw_wrapped(it, id(text_request), id(font_small), id(dark_text_color), 16, 3, 232, 2, 20);
+          }
+          if (!id(text_response).state.empty()) {
+            draw_text_frame(it, 10, 198, 300, 40, id(dark_text_color));
+            draw_wrapped(it, id(text_response), id(font_small), id(dark_text_color), 16, 199, 288, 2, 20);
+          }
           draw_battery(it, id(icon_font), id(dark_text_color), id(battery_percent), id(battery_voltage), id(api_status));
       # 错误（黑底图）
       - id: error_page

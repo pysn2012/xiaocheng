@@ -23,7 +23,7 @@ jobs:
       - name: 安装 ESPHome
         run: |
           python -m pip install --upgrade pip
-          pip install esphome==2026.8.2
+          pip install esphome==2026.9.0
 
       # 关键步骤：动态生成 secrets.yaml
       - name: Generate secrets.yaml

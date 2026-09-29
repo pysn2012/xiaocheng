@@ -73,6 +73,17 @@ script:
           id(key_b).publish_state((b & xiaocheng::KEY_COL_BIT4) != 0);
           id(key_left).publish_state((b & xiaocheng::KEY_COL_BIT6) != 0);
 
+  # ============ 问候语切换（只有 RIGHT 键：循环下一句）============
+  # 问候语表在 display_helpers.h（GREETINGS / GREETINGS_COUNT），条数只在那里改。
+  # 切过之后 greet_manual 置位：回到空闲就不再随机取词，否则刚挑好的那句
+  # 一对话就被随机换掉。重启后恢复随机。
+  - id: greet_next
+    then:
+      - lambda: |-
+          id(greet_manual) = true;
+          id(greet_idx) = (id(greet_idx) + 1) % GREETINGS_COUNT;
+      - script.execute: draw_display
+
   # ============ WS2812 状态灯效（由语音助手阶段驱动）============
   - id: va_light_off
     then:
@@ -148,11 +159,13 @@ script:
             - micro_wake_word.stop:
 
   # 根据静音开关设置当前阶段（回空闲时关灯 + 随机选一句问候语）
+  # 手动用 RIGHT 切过（greet_manual）就不随机，保留用户挑的那句
   - id: set_idle_or_mute_phase
     then:
       - light.turn_off: ws2812
       - lambda: |-
-          id(greet_idx) = rand() % 7;
+          if (!id(greet_manual))
+            id(greet_idx) = rand() % GREETINGS_COUNT;
       - if:
           condition:
             switch.is_off: mute
