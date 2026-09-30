@@ -13,6 +13,16 @@ text_sensor:
   - id: text_response
     platform: template
 
+  # 固件版本：取自 xiaocheng-va.yaml 的 substitutions.fw_version（发版时改那一处即可）
+  - platform: template
+    id: fw_version_text
+    name: "Firmware Version"
+    icon: mdi:tag
+    entity_category: diagnostic
+    update_interval: 3600s
+    lambda: |-
+      return {"${fw_version}"};
+
   - platform: wifi_info
     ip_address:
       id: wifi_ip

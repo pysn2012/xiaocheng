@@ -1,8 +1,10 @@
-# 语音助手：ES7210 麦克风(16k) + ES8311 喇叭(16k) + microWakeWord
+# 语音助手：ES7210 麦克风(16k) + ES8311 喇叭(48k) + microWakeWord
 # 唤醒词: "Okay Nabu" → 唤醒后语音对话 / 语音控制 HA
-# 收发统一 16k：麦克风被 microWakeWord 锁死 16k，喇叭跟麦走，MCLK 全程
-# 4.096MHz 不换频，避免每次阶段切换时 codec 重新同步产生哒声。
-# 代价：HA TTS（24k）重采样到 16k，高频细节略降。
+# 麦克风 16k 是 microWakeWord 的硬约束（模型只吃 16k）；喇叭走 48k，对齐 HA TTS
+# 的原生采样率，避免被降到 16k（那样带宽只剩 8kHz）。两者是各自独立的 I2S 通道，
+# 采样率不必相同（box-3 / lc-szpi 都是 16k+48k 这个组合）。
+# 注：切换阶段 MCLK 会在 4.096MHz / 12.288MHz 之间变化，但 ESPHome 的 i2s_audio 在
+# 每次 mic↔speaker 切换时本来就会销毁并重建 I2S 通道，所以这里并不额外引入启停瞬态。
 
 globals:
   # 标记设备是否仍在初始化
@@ -46,7 +48,7 @@ speaker:
     i2s_dout_pin: GPIO13
     dac_type: external
     audio_dac: es8311_dac
-    sample_rate: 16000   # 统一 16k：与麦克风同频，阶段切换时 MCLK 不换频（消切换哒声）
+    sample_rate: 48000   # 与 es8311_dac 一致；48k 对齐 HA TTS 原生采样率（16k 会砍掉 8kHz 以上）
     bits_per_sample: 16bit
     channel: mono
     buffer_duration: 500ms   # 100ms 偏小，播放时可能欠载出杂音
@@ -69,7 +71,7 @@ media_player:
     announcement_pipeline:
       speaker: box_speaker
       format: WAV
-      sample_rate: 16000
+      sample_rate: 48000
       num_channels: 1
     on_announcement:
       # 播放前显式关麦：彻底释放 ES7210/I2S 收音通路，

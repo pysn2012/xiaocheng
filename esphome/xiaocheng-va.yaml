@@ -9,6 +9,9 @@ substitutions:
   name: xiaocheng-va
   friendly_name: Xiaocheng VA
 
+  # ---- 固件版本（发版时在此处递增，例：1.0 -> 1.1；同时打同名 git tag）----
+  fw_version: "1.1"
+
   # ---- 语音助手阶段 ID ----
   voice_assist_idle_phase_id: "1"          # 空闲
   voice_assist_listening_phase_id: "2"     # 聆听
@@ -42,6 +45,12 @@ esphome:
   friendly_name: ${friendly_name}
   min_version: 2025.12.0
   name_add_mac_suffix: true
+  # 固件身份：会写进二进制（API / mDNS TXT 都能读到），HA 设备页可见，
+  # 也是后续做 OTA「固件更新」时识别版本号的依据。
+  # 名称必须带一个命名空间（形如 xx.yy，只允许一个点）；版本号统一取 ${fw_version}
+  project:
+    name: xiaocheng.va
+    version: ${fw_version}
   # 屏幕页面用的 C++ 辅助函数（draw_battery / draw_wrapped），
   # 文件放在主配置同目录（xiaocheng-va/display_helpers.h）
   # 注意：esphome.includes 是**逐个拷贝**到构建目录的（只拷这里列出的文件），
