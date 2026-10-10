@@ -1,0 +1,15 @@
+{
+  "type": "micro",
+  "wake_word": "hey_xiaowang",
+  "author": "laowang",
+  "model": "hey_xiaowang.tflite",
+  "trained_languages": ["zh_CN"],
+  "version": 2,
+  "micro": {
+    "probability_cutoff": 0.90,
+    "feature_step_size": 10,
+    "sliding_window_size": 5,
+    "tensor_arena_size": 45000,
+    "minimum_esphome_version": "2024.7.0"
+  }
+}
