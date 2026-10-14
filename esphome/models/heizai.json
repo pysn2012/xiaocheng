@@ -1,8 +1,8 @@
 {
   "type": "micro",
-  "wake_word": "nihaoxiaozhi",
+  "wake_word": "heizai",
   "author": "le",
-  "model": "nihaoxiaozhi.tflite",
+  "model": "heizai.tflite",
   "trained_languages": [
     "zh_CN"
   ],

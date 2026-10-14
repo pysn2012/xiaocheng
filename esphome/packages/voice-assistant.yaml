@@ -113,11 +113,8 @@ media_player:
 micro_wake_word:
   id: mww
   models:
-    - okay_nabu
-    - model: models/nihaoxiaozhi.json
-      probability_cutoff: 0.85
-    - model: models/hey_xiaowang.json
-      probability_cutoff: 0.85
+    - model: models/xiaocheng.json
+    - model: models/heizai.json
   on_wake_word_detected:
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
