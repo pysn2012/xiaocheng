@@ -123,7 +123,7 @@ micro_wake_word:
   id: mww
   models:
     - model: models/xiaocheng.json
-    - model: models/heizai.json
+    - model: models/nihaoxiaozhi.json
   on_wake_word_detected:
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
