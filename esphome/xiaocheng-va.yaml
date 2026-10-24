@@ -65,11 +65,9 @@ esphome:
     priority: 600
     then:
       - script.execute: draw_display
-      # 功放最后通电（对齐 xiaozhi 上电时序）：等音频电源(P1.4)/codec/I2S
-      # 全部稳定后再接通 NS4152，消除开机 pop 与底噪
-      # （amp_enable 在 hardware.yaml 中为 ALWAYS_OFF，全靠这里打开）
-      - delay: 1s
-      - switch.turn_on: amp_enable
+      # 功放不再开机常开（板测实证 2026-10-24：NS4152 常开 = 待机沙沙声）。
+      # 功放改为播报期间动态通电：media_player.on_announcement 开、
+      # amp_idle_off 播放结束后延迟 1s 关（amp_enable 在 hardware.yaml 为 ALWAYS_OFF）
       - delay: 30s
       - if:
           condition:

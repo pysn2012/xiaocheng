@@ -6,10 +6,10 @@
 # ============================================================
 
 # 上电时序（MicroPython 板测 + 原厂固件逆向结论，2026-10-24 板测定案）：
-# - 音频只需要 2 个 XL9535 引脚：P1.4(AUDIO_PWR) 必须、P0.3(AMP_EN) 播放时开。
+# - 音频只需要 2 个 XL9535 引脚：P1.4(AUDIO_PWR) 必须、P0.3(AMP_EN) 播报期间开。
 #   P1.4 由 restore_mode ALWAYS_ON 在硬件初始化阶段就接通（codec 初始化依赖它）；
-#   功放 NS4152 为 ALWAYS_OFF，由主配置 xiaocheng-va.yaml 的 esphome.on_boot
-#   延迟接通（等 codec/I2S 稳定后再上功放，消除开机 pop）。
+#   功放 NS4152 为 ALWAYS_OFF，播报期间动态通电（on_announcement 开 /
+#   amp_idle_off 延迟关）—— 常开会把 ES8311 本底噪声放大成待机沙沙声（板测实证）。
 # - P0.7 = M2 电机使能（GPIO40/41），与音频无关（原厂固件开机输出低、音频照样正常），
 #   绝不能当音频 LDO 拉高 —— 旧配置的 ldo_enable(ALWAYS_ON) 已删除。
 # - P0.5 = 电池采样开关（接通 GPIO10 电压采样支路，板测实证；battery_adc_en 已配）；
@@ -114,8 +114,10 @@ switch:
       mode: { output: true }
     restore_mode: ALWAYS_ON
 
-  # 功放（NS4152）使能：上电不自动开，由 on_boot 延迟 1s 后再接通
-  # （等音频电源/codec 稳定后再上功放，消除开机 pop；P0.3 active-HIGH）
+  # 功放（NS4152）使能：不在开机常开 —— 板测实证（2026-10-24）NS4152 常开会把
+  # ES8311 本底噪声放大成待机沙沙声，HA 手动关 Amp Enable 后立刻消失。
+  # 改为播报期间动态通电：media_player.on_announcement 开、amp_idle_off 延迟 1s 关
+  # （P0.3 active-HIGH，开机默认关 = 待机完全静音）
   - platform: gpio
     id: amp_enable
     name: "Amp Enable"
