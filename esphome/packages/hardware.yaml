@@ -314,22 +314,19 @@ audio_dac:
 # 而 esp-adf / box3 量产固件显式写 0x10=0x1F、0x11=0x7F（VREF + 模拟模块全上电）。
 # 缺这两颗寄存器 → DAC 输出级工作在劣化偏置 → 底噪大 → 播放时被 NS4152 放大成沙沙声。
 # 这里在 es8311 setup 完成后（on_boot priority 250：所有同步组件 setup 已结束，
-# 且早于 WiFi 就绪/任何播报）用 i2c.write 补齐，与 mpup 工作点对齐。
+# 且早于 WiFi 就绪/任何播报）用 lambda 直写 I2C 总线补齐，与 mpup 工作点对齐。
 # 注意：只补电源域寄存器，勿碰 0x01~0x08 时钟系数（那是 ESPHome 按采样率算好的）。
 esphome:
   on_boot:
     priority: 250
     then:
-      - i2c.write:
-          address: 0x18
-          i2c_id: i2c_bus
-          register: 0x10
-          value: 0x1F      # 模拟模块上电（esp-adf ES8311_SYSTEM_REG10）
-      - i2c.write:
-          address: 0x18
-          i2c_id: i2c_bus
-          register: 0x11
-          value: 0x7F      # VREF/模拟输出级上电（esp-adf ES8311_SYSTEM_REG11）
+      # 用 I2CBus 原生 lambda 写：buffer = [寄存器地址, 数据] 两字节直写
+      # （i2c.write 这个 action 在 ESPHome 中不存在，勿再用）
+      - lambda: |-
+          const uint8_t buf1[2] = {0x10, 0x1F};
+          id(i2c_bus)->write(0x18, buf1, 2);
+          const uint8_t buf2[2] = {0x11, 0x7F};
+          id(i2c_bus)->write(0x18, buf2, 2);
 
 # ---- 屏幕：mipi_spi 新 API（旧版是 st7789v 平台，不可混用）----
 display:
