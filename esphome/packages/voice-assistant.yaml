@@ -1,9 +1,10 @@
-# 语音助手：ES7210 麦克风(16k) + ES8311 喇叭(48k) + microWakeWord
+# 语音助手：ES7210 麦克风(16k) + ES8311 喇叭(24k) + microWakeWord
 # 唤醒词: "Okay Nabu" → 唤醒后语音对话 / 语音控制 HA
-# 麦克风 16k 是 microWakeWord 的硬约束（模型只吃 16k）；喇叭走 48k，对齐 HA TTS
-# 的原生采样率，避免被降到 16k（那样带宽只剩 8kHz）。两者是各自独立的 I2S 通道，
-# 采样率不必相同（box-3 / lc-szpi 都是 16k+48k 这个组合）。
-# 注：切换阶段 MCLK 会在 4.096MHz / 12.288MHz 之间变化，但 ESPHome 的 i2s_audio 在
+# 麦克风 16k 是 microWakeWord 的硬约束（模型只吃 16k）；喇叭走 24k —— 板测实证：
+# 同板 mpup 与 xiaozhi-zyb（xiaocheng-h1 板卡）在 24k/MCLK 6.144MHz 下播放干净，
+# 48k（MCLK 12.288MHz）下 ES8311 内部时钟翻倍、播放有沙沙声（2026-10-24 定案）。
+# 两个通道是各自独立的 I2S 通道，采样率不必相同。
+# 注：切换阶段 MCLK 会在 4.096MHz / 6.144MHz 之间变化，但 ESPHome 的 i2s_audio 在
 # 每次 mic↔speaker 切换时本来就会销毁并重建 I2S 通道，所以这里并不额外引入启停瞬态。
 
 globals:
@@ -50,7 +51,8 @@ speaker:
     i2s_dout_pin: GPIO13
     dac_type: external
     audio_dac: es8311_dac
-    sample_rate: 48000   # 与 es8311_dac 一致；48k 对齐 HA TTS 原生采样率（16k 会砍掉 8kHz 以上）
+    sample_rate: 24000   # 对齐无噪声工作点：同板 mpup / xiaozhi-zyb 均为 24k（MCLK 6.144MHz）
+                         # 播放干净；48k（MCLK 12.288MHz）实测播放沙沙声。与 es8311_dac 一致。
     bits_per_sample: 16bit
     channel: mono
     buffer_duration: 500ms   # 100ms 偏小，播放时可能欠载出杂音
@@ -71,8 +73,8 @@ media_player:
     volume_increment: 0.02    # 音量键步进 ≈2.6dB（默认 0.05 太粗）
     announcement_pipeline:
       speaker: box_speaker
-      format: FLAC       # 唯一保留的 box-3 对齐项：纯解码侧差异，与待机沙沙声无关
-      sample_rate: 48000
+      format: WAV       # 唯一保留的 box-3 对齐项：纯解码侧差异，与待机沙沙声无关
+      sample_rate: 24000
       num_channels: 1
     on_announcement:
       # 播放前显式关麦：彻底释放 ES7210/I2S 收音通路，
@@ -121,7 +123,7 @@ micro_wake_word:
   id: mww
   models:
     - model: models/xiaocheng.json
-    - model: models/nihaoxiaozhi.json
+    - model: models/heizai.json
   on_wake_word_detected:
     - voice_assistant.start:
         wake_word: !lambda return wake_word;

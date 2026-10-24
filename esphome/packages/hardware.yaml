@@ -306,27 +306,14 @@ audio_dac:
     i2c_id: i2c_bus
     address: 0x18
     bits_per_sample: 16bit
-    sample_rate: 48000   # 必须与 speaker 一致（codec 内部时钟分频）；麦克风仍是 16k
+    sample_rate: 24000   # 对齐无噪声工作点：同板 mpup 与 xiaozhi-zyb（xiaocheng-h1 板卡）
+                         # 均为 24k/MCLK 6.144MHz 播放干净；48k（MCLK 12.288MHz）实测
+                         # ES8311 内部时钟翻倍 → 电源域噪声增大 → 播放沙沙声（2026-10-24）
+                         # 必须与 speaker 一致；麦克风仍是 16k（mWW 硬约束）
 
-# ---- ES8311 播放底噪补丁（2026-10-24 播放沙沙声定位）----
-# 对比 esp-adf 官方驱动与同板 mpup（播放干净）发现：ESPHome 的 es8311 setup()
-# 不写 REG10/REG11 模拟电源域寄存器（复位默认 0x00 = 模拟参考/输出级欠上电），
-# 而 esp-adf / box3 量产固件显式写 0x10=0x1F、0x11=0x7F（VREF + 模拟模块全上电）。
-# 缺这两颗寄存器 → DAC 输出级工作在劣化偏置 → 底噪大 → 播放时被 NS4152 放大成沙沙声。
-# 这里在 es8311 setup 完成后（on_boot priority 250：所有同步组件 setup 已结束，
-# 且早于 WiFi 就绪/任何播报）用 lambda 直写 I2C 总线补齐，与 mpup 工作点对齐。
-# 注意：只补电源域寄存器，勿碰 0x01~0x08 时钟系数（那是 ESPHome 按采样率算好的）。
-esphome:
-  on_boot:
-    priority: 250
-    then:
-      # 用 I2CBus 原生 lambda 写：buffer = [寄存器地址, 数据] 两字节直写
-      # （i2c.write 这个 action 在 ESPHome 中不存在，勿再用）
-      - lambda: |-
-          const uint8_t buf1[2] = {0x10, 0x1F};
-          id(i2c_bus)->write(0x18, buf1, 2);
-          const uint8_t buf2[2] = {0x11, 0x7F};
-          id(i2c_bus)->write(0x18, buf2, 2);
+# 注：REG10/REG11（0x1F/0x7F 模拟电源域）补丁已撤销——板测证明在 ESPHome 48k 环境
+# 下写它们导致音量暴跌，而 esp_codec_dev/mpup 在 24k 下写同值却正常。该寄存器组合
+# 与采样率强相关，不可单独照抄。
 
 # ---- 屏幕：mipi_spi 新 API（旧版是 st7789v 平台，不可混用）----
 display:
