@@ -1,14 +1,21 @@
 # ============================================================
 # 硬件层：芯片/总线/屏幕/灯/键盘矩阵
 # 注意顺序：电源开关（XL9535）放在音频芯片之前声明，
-# 保证上电时先开 P1.4 音频电源 / P0.7 LDO，再初始化 ES7210/ES8311
+# 保证上电时先开 P1.4 音频电源，再初始化 ES7210/ES8311
 # 页面绘制辅助函数见 display_helpers.h（draw_battery / draw_wrapped）
 # ============================================================
 
-# 上电时序（对齐 xiaozhi-zyb xiaocheng-h1）：
-# 音频电源/LDO 由 restore_mode ALWAYS_ON 在硬件初始化阶段就接通（codec 初始化
-# 依赖它们）；功放 NS4152 为 ALWAYS_OFF，由主配置 xiaocheng-va.yaml 的
-# esphome.on_boot 延迟接通（等 codec/I2S 稳定后再上功放，消除开机 pop）。
+# 上电时序（MicroPython 板测 + 原厂固件逆向结论，2026-10-24 板测定案）：
+# - 音频只需要 2 个 XL9535 引脚：P1.4(AUDIO_PWR) 必须、P0.3(AMP_EN) 播放时开。
+#   P1.4 由 restore_mode ALWAYS_ON 在硬件初始化阶段就接通（codec 初始化依赖它）；
+#   功放 NS4152 为 ALWAYS_OFF，由主配置 xiaocheng-va.yaml 的 esphome.on_boot
+#   延迟接通（等 codec/I2S 稳定后再上功放，消除开机 pop）。
+# - P0.7 = M2 电机使能（GPIO40/41），与音频无关（原厂固件开机输出低、音频照样正常），
+#   绝不能当音频 LDO 拉高 —— 旧配置的 ldo_enable(ALWAYS_ON) 已删除。
+# - P0.5 = 电池采样开关（接通 GPIO10 电压采样支路，板测实证；battery_adc_en 已配）；
+#   原厂恒高 = 常开采样，与音频无关。
+# - MCLK(GPIO15) 必须正确供给：MPY 侧曾因 MCLK 与 ES7210 时钟分频不匹配
+#   导致 I2S 全 0 采样。i2s_audio 已配 i2s_mclk_pin，勿删。
 
 esp32:
   variant: esp32s3
@@ -97,6 +104,7 @@ xl9535:
 # ---- 电源/LED 开关（XL9535 扩展引脚）----
 switch:
   # 音频电源（必须先于 audio_adc/dac 初始化，见文件头说明）
+  # P1.4 = 线性编号 12；板上实测有效（原厂固件把它配成输入，但拉高输出是板测验证过的正解）
   - platform: gpio
     id: audio_power
     name: "Audio Power"
@@ -106,18 +114,8 @@ switch:
       mode: { output: true }
     restore_mode: ALWAYS_ON
 
-  # LDO 使能
-  - platform: gpio
-    id: ldo_enable
-    name: "LDO"
-    pin:
-      xl9535: xl9535_hub
-      number: ${xl_pin_ldo}
-      mode: { output: true }
-    restore_mode: ALWAYS_ON
-
   # 功放（NS4152）使能：上电不自动开，由 on_boot 延迟 1s 后再接通
-  # （对齐 xiaozhi 上电时序：等音频电源/codec 稳定后再上功放，消除开机 pop）
+  # （等音频电源/codec 稳定后再上功放，消除开机 pop；P0.3 active-HIGH）
   - platform: gpio
     id: amp_enable
     name: "Amp Enable"
@@ -137,7 +135,8 @@ switch:
     restore_mode: ALWAYS_ON
     internal: true
 
-  # 状态 LED（若实测亮灭相反，给对应 pin 加 inverted: true）
+  # 状态 LED（逆向已确认 active-LOW：P1.6=绿灯、P1.7=蓝灯，原厂输出高=灭）
+  # inverted: true 让 switch 语义对齐物理灯效 —— OFF→引脚高→灯灭，ON→灯亮
   - platform: gpio
     id: led_green
     name: "LED Green"
@@ -145,6 +144,7 @@ switch:
       xl9535: xl9535_hub
       number: ${xl_pin_led_green}
       mode: { output: true }
+      inverted: true
     restore_mode: ALWAYS_OFF
 
   - platform: gpio
@@ -154,6 +154,7 @@ switch:
       xl9535: xl9535_hub
       number: ${xl_pin_led_blue}
       mode: { output: true }
+      inverted: true
     restore_mode: ALWAYS_OFF
 
   # ---- 键盘矩阵行（GPIO0 / GPIO46）----
@@ -285,6 +286,10 @@ light:
       - strobe:
 
 # ---- 音频编解码器（I2C 控制 + I2S 数据）----
+# 板测确认（MicroPython 录放闭环通过）：
+# - 板上只焊了 MIC1（单麦克风），ES7210 左声道有数据、右声道空缺 → mic channel: left
+# - ES7210 地址 0x43（ADDR 跳线）、ES8311 地址 0x18
+# - MCLK 必须供给且与采样率匹配（256×fs），否则 I2S 读到全 0 —— 见文件头
 audio_adc:
   - platform: es7210
     id: es7210_adc

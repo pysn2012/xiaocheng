@@ -29,13 +29,16 @@ substitutions:
 
   # ---- XL9535 引脚----
   # ESPHome xl9535 编号规则：P0 组 = 0~7；P1 组 = 10~17
+  # 上电要求（MicroPython 板测 + 原厂固件逆向，2026-10 板测通过）：
+  #   音频只需 P1.4(必须) + P0.3(播放)；P0.7 是 M2 电机使能、与音频无关，
+  #   绝不能拉高（旧的 xl_pin_ldo 已删除）；
+  #   P0.5 是电池采样开关（板测实证：拉高 GPIO10 才能读到电池电压）。
   xl_pin_lcd_rst: "12"       # LCD_RST  P1.2
-  xl_pin_amp_en: "3"         # 功放使能 P0.3
-  xl_pin_ldo: "7"            # LDO      P0.7
+  xl_pin_amp_en: "3"         # 功放使能 P0.3（active-HIGH）
   xl_pin_audio_pwr: "14"     # 音频电源 P1.4
-  xl_pin_adc_en: "5"         # 电池采样使能（高电平）P0.5
-  xl_pin_led_green: "16"     # 绿色LED  P1.6
-  xl_pin_led_blue: "17"      # 蓝色LED  P1.7
+  xl_pin_adc_en: "5"         # 电池采样开关 P0.5（板测实证；原厂恒高=常开采样）
+  xl_pin_led_green: "16"     # 绿色LED  P1.6（active-LOW，hardware.yaml 已 inverted）
+  xl_pin_led_blue: "17"      # 蓝色LED  P1.7（active-LOW，hardware.yaml 已 inverted）
   xl_pin_key_col0: "0"       # 键盘列 1 = P0.0
   xl_pin_key_col4: "4"       # 键盘列 2 = P0.4
   xl_pin_key_col6: "6"       # 键盘列 3 = P0.6
@@ -62,7 +65,7 @@ esphome:
     priority: 600
     then:
       - script.execute: draw_display
-      # 功放最后通电（对齐 xiaozhi 上电时序）：等音频电源/LDO/codec/I2S
+      # 功放最后通电（对齐 xiaozhi 上电时序）：等音频电源(P1.4)/codec/I2S
       # 全部稳定后再接通 NS4152，消除开机 pop 与底噪
       # （amp_enable 在 hardware.yaml 中为 ALWAYS_OFF，全靠这里打开）
       - delay: 1s
