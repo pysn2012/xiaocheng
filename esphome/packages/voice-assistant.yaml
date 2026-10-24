@@ -41,6 +41,9 @@ microphone:
     channel: left
 
 # 喇叭：ES8311 → DOUT=GPIO13 → NS4152 功放
+# 对齐 esp32-s3-box-3（ES7210+ES8311 同款芯片、真验证过的配置）：
+#   channel: left + buffer_duration: 100ms（box-3 显式 100ms，即 ESPHome 默认值）
+# 旧配置的 500ms 大缓冲让 pipeline 常驻更多残留数据，已废弃。
 speaker:
   - platform: i2s_audio
     id: box_speaker
@@ -50,33 +53,29 @@ speaker:
     audio_dac: es8311_dac
     sample_rate: 48000   # 与 es8311_dac 一致；48k 对齐 HA TTS 原生采样率（16k 会砍掉 8kHz 以上）
     bits_per_sample: 16bit
-    channel: mono
-    buffer_duration: 500ms   # 100ms 偏小，播放时可能欠载出杂音
+    channel: left        # box-3 同款；若板测播报无声（ES8311 采了右声道），退回 mono
+    buffer_duration: 100ms
 
 # 媒体播放器：播 TTS / 提示音
+# 对齐 esp32-s3-box-3：音量钳制 0.5~0.8（box-3 验证值）。
+# 说明：lc-szpi 无钳制也正常、box-3 有钳制也正常 → 钳制不是待机沙沙声根源；
+# 这里跟随 box-3（同款音频芯片）取 0.5~0.8，避免 ES8311 数字音量顶满。
 media_player:
   - platform: speaker
     name: None
     id: speaker_media_player
-    # 音量范围 = ES8311 的 REG32 数字音量寄存器（线性 0..255）：
-    #   0.75 = 0xBF = 0dB（datasheet 的 0dB 点）    1.0 = 0xFF = +32dB
-    # 所以旧的 0.8~1.0 等于全程 +6.5dB~+32dB，信号和量化噪声一起被抬高几十 dB
-    # → "声音很大但明显噪声"。mpup（同一台掌机，声音正常）用 esp_codec_dev，
-    # 它的音量 100 就是 0dB，所以这里把上限压到 0.75 与 mpup 对齐。
-    #   0.50 → REG32 127 → -32dB      0.75 → REG32 191 → 0dB
     volume_min: 0.5
-    volume_max: 0.75
-    volume_initial: 0.7       # → REG32 ≈172 → 约 -9.5dB
-    volume_increment: 0.02    # 音量键步进 ≈2.6dB（默认 0.05 太粗）
+    volume_max: 0.8
     announcement_pipeline:
       speaker: box_speaker
-      format: WAV
+      format: FLAC       # box-3 同款（FLAC 比 WAV 省一半以上传输带宽）
       sample_rate: 48000
       num_channels: 1
     on_announcement:
-      # 播放前显式关麦：彻底释放 ES7210/I2S 收音通路，
-      # 播放期间独占总线（半双工），杜绝回环串进功放的电流声
-      - microphone.stop_capture:
+      # 对齐 esp32-s3-box-3：不做显式 microphone.stop_capture（box-3 没有）。
+      # 播报期间强制停麦会销毁 I2S 收音通道、触发 mic↔speaker 通道重建，
+      # 每次播报后的重建瞬态正是待机沙沙声的可疑来源之一；停唤醒词交给
+      # 下面的 is_capturing 分支即可。
       # 播报时若麦克风在收音，先停唤醒词，避免回声自触发
       - if:
           condition:
@@ -114,7 +113,7 @@ micro_wake_word:
   id: mww
   models:
     - model: models/xiaocheng.json
-    - model: models/nihaoxiaozhi.json
+    - model: models/heizai.json
   on_wake_word_detected:
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
