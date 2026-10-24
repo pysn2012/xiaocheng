@@ -42,8 +42,8 @@ microphone:
     channel: left
 
 # 喇叭：ES8311 → DOUT=GPIO13 → NS4152 功放
-# 回退到本机验证过的原始参数（mono + 500ms）：box-3 对齐版（left + 100ms）板测
-# 沙沙声反而变大，全部回退。box-3/lc-szpi 板级走线与本机不同，音频参数不可照抄。
+# 当前声道按 esp32-s3-box-3（同款 ES7210+ES8311，验证无沙沙）对齐：channel left + num_channels 1。
+# 其余参数保持本机板测最优：24k / 500ms（100ms 偏小易欠载）/ 音量 0.5~0.75。
 speaker:
   - platform: i2s_audio
     id: box_speaker
@@ -54,7 +54,7 @@ speaker:
     sample_rate: 24000   # 对齐无噪声工作点：同板 mpup / xiaozhi-zyb 均为 24k（MCLK 6.144MHz）
                          # 播放干净；48k（MCLK 12.288MHz）实测播放沙沙声。与 es8311_dac 一致。
     bits_per_sample: 16bit
-    channel: mono
+    channel: left        # 照 esp32-s3-box-3（同款 ES7210+ES8311，验证无沙沙）：left 声道
     buffer_duration: 500ms   # 100ms 偏小，播放时可能欠载出杂音
 
 # 媒体播放器：播 TTS / 提示音
@@ -75,7 +75,7 @@ media_player:
       speaker: box_speaker
       format: WAV       # 唯一保留的 box-3 对齐项：纯解码侧差异，与待机沙沙声无关
       sample_rate: 24000
-      num_channels: 1
+      num_channels: 1   # 照 box-3：num_channels 1 + speaker channel left
     on_announcement:
       # 播放前显式关麦：彻底释放 ES7210/I2S 收音通路，
       # 播放期间独占总线（半双工），杜绝回环串进功放的电流声
