@@ -47,12 +47,7 @@ script:
 
   # ============ 键盘扫描：2 行 x 3 列，差分法 ============
   # 判键逻辑全部在 key_scan.h（xiaocheng::key_scan_row），对齐 mpup 的
-  # xiaocheng-esp32s3 matrix_key_input.cpp：
-  #   行拉低读一次 → 行拉高读一次 → low ^ high 才是闭合键。
-  # 为什么不能用"拉低行读到低就算按下"：本机列线悬空、无上下拉，松手时列电平
-  # 不确定，会被当成按下（乱跳）；而真实按键又受行线阻抗影响（没反应）。
-  # 整轮扫描在一个 lambda 内跑完，行线电平切换与 I2C 读取之间不 yield，
-  # 避免主循环被 mWW 推理/显示负载卡住时行线停在低电平过久（幽灵按键）。
+
   - id: key_scan
     mode: single
     then:
@@ -175,10 +170,7 @@ script:
             - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
 
   # 待机静音：播放结束后延迟关功放。
-  # 板测实证（2026-10-24）：NS4152 常开会把 ES8311 本底噪声放大成待机沙沙声，
-  # HA 手动关 Amp Enable 后沙沙声立刻消失。延迟 1s 防止句尾被截；
-  # 关断前复查：若期间来了新播报（is_announcing/is_playing）则跳过关断。
-  # mode: restart 保证多次触发只保留一个挂起实例。
+
   - id: amp_idle_off
     mode: restart
     then:

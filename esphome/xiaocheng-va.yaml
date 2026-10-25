@@ -2,7 +2,7 @@
 # 小程 ESP32S3 掌机 · ESPHome 语音助手
 # 硬件：ESP32-S3 N16R8 / XL9535 / ST7789 2.0" 320x240
 #       ES7210(ADC) + ES8311(DAC) + NS4152 / WS2812 x10 / 矩阵键盘 2x3
-# 模块化结构参考 pill_box，语音助手/显示参考 lc-szpi-esp32s3
+
 # 需要 secrets.yaml: wifi_ssid / wifi_password
 # ============================================================
 substitutions:

@@ -5,18 +5,6 @@
 # 页面绘制辅助函数见 display_helpers.h（draw_battery / draw_wrapped）
 # ============================================================
 
-# 上电时序（MicroPython 板测 + 原厂固件逆向结论，2026-10-24 板测定案）：
-# - 音频只需要 2 个 XL9535 引脚：P1.4(AUDIO_PWR) 必须、P0.3(AMP_EN) 播报期间开。
-#   P1.4 由 restore_mode ALWAYS_ON 在硬件初始化阶段就接通（codec 初始化依赖它）；
-#   功放 NS4152 为 ALWAYS_OFF，播报期间动态通电（on_announcement 开 /
-#   amp_idle_off 延迟关）—— 常开会把 ES8311 本底噪声放大成待机沙沙声（板测实证）。
-# - P0.7 = M2 电机使能（GPIO40/41），与音频无关（原厂固件开机输出低、音频照样正常），
-#   绝不能当音频 LDO 拉高 —— 旧配置的 ldo_enable(ALWAYS_ON) 已删除。
-# - P0.5 = 电池采样开关（接通 GPIO10 电压采样支路，板测实证；battery_adc_en 已配）；
-#   原厂恒高 = 常开采样，与音频无关。
-# - MCLK(GPIO15) 必须正确供给：MPY 侧曾因 MCLK 与 ES7210 时钟分频不匹配
-#   导致 I2S 全 0 采样。i2s_audio 已配 i2s_mclk_pin，勿删。
-
 esp32:
   variant: esp32s3
   flash_size: 16MB
@@ -311,46 +299,6 @@ audio_dac:
                          # ES8311 内部时钟翻倍 → 电源域噪声增大 → 播放沙沙声（2026-10-24）
                          # 必须与 speaker 一致；麦克风仍是 16k（mWW 硬约束）
 
-# 注：ES8311 模拟域补初始化见下方 on_boot —— 对齐 esp_codec_dev es8311_open() 序列
-# （板测无噪声基准：mpup 原厂固件、xiaozhi-zyb 均经 esp_codec_dev 初始化）。
-
-# ===== ES8311 模拟域补初始化（沙沙声治理，2026-10-25）=====
-# 三固件同板对比（同一块小程 H1 板子）：
-#   mpup（无噪声）   → esp_codec_dev：REG10=0x1F + REG11=0x7F + REG44=0x58
-#   xiaozhi-zyb（无噪声）→ esp_codec_dev：同上
-#   ESPHome（沙沙声） → es8311 组件三个寄存器全都不写，REG44 保持复位默认 0x00
-# REG44 bits[5:4]=REF_SEL：00（默认）= 不选内部参考 / 01 = 内部参考 DACR+ADCL。
-# 之前单写 REG10/11 音量暴跌的根因就是缺 REG44=0x58 伴生（参考源没选内部），
-# 三者必须按 codec_dev 顺序成组写入，这次是完整序列。
-esphome:
-  on_boot:
-    # 250 = 所有组件 setup() 之后执行（es8311 默认 setup_priority 600；
-    # 若用 600 同优先级顺序不定，setup() 里的软复位会清掉本补丁）
-    priority: 250
-    then:
-      - lambda: |-
-          // 照抄 esp_codec_dev es8311_open() 的模拟域部分（时钟/格式寄存器
-          // ESPHome setup() 已配好，不碰）
-          const uint8_t addr = 0x18;
-          auto wr = [&addr](uint8_t reg, uint8_t val) {
-            const uint8_t buf[2] = {reg, val};
-            auto err = id(i2c_bus)->write(addr, buf, 2);
-            if (err != esphome::i2c::ERROR_OK)
-              ESP_LOGW("es8311", "write REG%02X failed: %d", reg, (int) err);
-          };
-          auto rd = [&addr](uint8_t reg) -> int {
-            uint8_t val = 0;
-            id(i2c_bus)->write(addr, &reg, 1);
-            id(i2c_bus)->read(addr, &val, 1);
-            return val;
-          };
-          wr(0x44, 0x08);   // codec_dev 连写两次（首次 I2C 写偶发失败）
-          wr(0x44, 0x08);
-          wr(0x10, 0x1F);   // 模拟电源域全开
-          wr(0x11, 0x7F);
-          wr(0x44, 0x58);   // REF_SEL=01 内部参考，最后开（codec_dev 顺序）
-          ESP_LOGI("es8311", "codec_dev analog init: REG10=%02X REG11=%02X REG44=%02X",
-                   rd(0x10), rd(0x11), rd(0x44));
 
 # ---- 屏幕：mipi_spi 新 API（旧版是 st7789v 平台，不可混用）----
 display:
